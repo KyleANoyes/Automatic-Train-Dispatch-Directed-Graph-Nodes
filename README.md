@@ -2,4 +2,5 @@
 Copy of my testing environment used when creating the direct graph node algorithm
 
 
-More soon to come, but I am lazy in writing these and will probably get back to it soon :)
+More testing needed to fix some self reversing actions, but waiting to update this until after CGMRC show is over and I have time agian :)
+https://cgmrc.com/events
