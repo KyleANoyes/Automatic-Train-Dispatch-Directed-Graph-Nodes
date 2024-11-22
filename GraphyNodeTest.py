@@ -1,8 +1,13 @@
 # Current build date: Nov 21 2024
 
+# TODO: Figure out why we can break out of the group 1 loop. It has something to do with vector using the * sign
+
 import copy
 
 STEPS_AFTER_SWITCH = 3
+COOLDOWN_REVERSE = (STEPS_AFTER_SWITCH * 2)
+COOLDOWN_NORMAL = 1
+SELF_LOOP_MAX = 4
 
 class LayoutMaster():
     def __init__(self):
@@ -22,7 +27,7 @@ class LayoutMaster():
 
         # The actual int values do not matter,
         #   they are just here for better visualization
-        self.trackGroup = [
+        self.trackGroupHuman = [
             # MainPax - 00
             [[0, 1, 2, 3, 4, 5, 6, 7], 0],
             # MainFreight - 01
@@ -46,6 +51,8 @@ class LayoutMaster():
             # LowerAux - 10
             [[47], 10]
         ]
+
+        self.trackGroupComp = []
 
         self.switchPoints = [
             #00
@@ -148,6 +155,12 @@ class LayoutMaster():
             []
         ]
 
+    def CreateTrackComp(self):
+        for yAxis in range(len(self.trackGroupHuman)):
+            self.trackGroupComp.append([[], yAxis])
+            for xAxis in range(len(self.trackGroupHuman[yAxis][0])):
+                self.trackGroupComp[yAxis][0].append(xAxis)
+
 
 class TrainPath:
     # Copy location, add direction marker, and record steps
@@ -168,13 +181,12 @@ class TrainPath:
         self.switchPoint = [False]
         self.sumReverse = 0
         self.switchStepWait = 0
-        self.reverseStepWait = 0
+        self.cooldown = 0
         self.sumPoints = 0
         self.sumSteps = 0
+        self.selfLoop = 0
 
 
-
-trackLayout = LayoutMaster()
 
 # Config
 pointForwards = 1
@@ -190,6 +202,11 @@ path = [[], []]
 location = [0, 2]
 target = [7, 17]
 
+#   Create track object, then translate human list into computer friendly list
+trackLayout = LayoutMaster()
+trackLayout.CreateTrackComp()
+
+#   Create path objects and initialize two starts
 path[0].append(TrainPath('+', location[0], location[1]))
 path[1].append(TrainPath('-', location[0], location[1]))
 
@@ -205,7 +222,7 @@ while (cycle < 250):
             #   Pass object members to local variables, process the changes needed
             #   and then save members back to the object. This will make it much
             #   easier to debug as well, and decrease the spaghetti
-            currentGroupNum = trackLayout.trackGroup[path[directionGroup][subGroup].trackGroup[-1]][1]
+            currentGroupNum = trackLayout.trackGroupComp[path[directionGroup][subGroup].trackGroup[-1]][1]
             currentTrackPos = path[directionGroup][subGroup].trackIndex[-1]
             direction = path[directionGroup][subGroup].direction[-1]
             pathEnd = path[directionGroup][subGroup].pathEnd[-1]
@@ -215,18 +232,19 @@ while (cycle < 250):
             sumSteps = path[directionGroup][subGroup].sumSteps
             switchPoint = path[directionGroup][subGroup].switchPoint[-1]
             switchStepWait = path[directionGroup][subGroup].switchStepWait
-            reverseStepWait = path[directionGroup][subGroup].reverseStepWait
+            cooldown = path[directionGroup][subGroup].cooldown
 
             # debug point
             if zz_directionGroup == 0 and zz_subGroup == 1:
+                print(F"Current group: {currentGroupNum}\nCurrent Pos: {currentTrackPos}")
                 pass
 
             # If not end, proceed with program
             if pathEnd == False:
-                groupLength = len(trackLayout.trackGroup[currentGroupNum][0])
+                groupLength = len(trackLayout.trackGroupComp[currentGroupNum][0])
                 # Get index of current position
                 for posIndex in range(groupLength):
-                    groupIndexPos = trackLayout.trackGroup[currentGroupNum][0][posIndex]
+                    groupIndexPos = trackLayout.trackGroupComp[currentGroupNum][0][posIndex]
                     if groupIndexPos == currentTrackPos:
                         groupIndexPos = posIndex
                         break
@@ -235,7 +253,7 @@ while (cycle < 250):
                 # ------------------------------------------------------------------------------
                 # If last step was not a switch and path not on a cooldown
                 if switchPoint == False and switchStepWait == 0:
-                    trackGroup = trackLayout.trackGroup[currentGroupNum][0]
+                    trackGroup = trackLayout.trackGroupComp[currentGroupNum][0]
                     # Check if direction indicates positive
                     if direction == '+':
                         groupLength = len(trackGroup) - 1
@@ -270,9 +288,8 @@ while (cycle < 250):
                         sumPoints += pointBackwards
                         sumSteps += 1
 
-
                 # If last was switch with incorrect vector, process step cool down and then reverse direction
-                elif switchPoint[0] == '-':
+                elif switchPoint[0] == '-' or cooldown != 0:
                     # Check if direction indicates positive
                     if direction == '+':
                         # Check if end of list
@@ -321,23 +338,23 @@ while (cycle < 250):
                             direction = '+'
 
                 # If last was switch with incorrect vector, process one more step and then reverse direction
-                elif switchPoint[0] == '+':
+                elif switchPoint[0] == '+' and cooldown == 0:
                     # Reassign switch to int
                     switchPoint = int(switchPoint[1])
 
                     # Collect connection list
-                    connectionVector = path[directionGroup][subGroup][-1][2]
+                    connectionVector = path[directionGroup][subGroup].direction[-1]
                     if connectionVector == '-':
-                        connectionList = trackLayout.switchConnections[path[directionGroup][subGroup][-1][5]][0]
+                        connectionList = trackLayout.switchConnections[path[directionGroup][subGroup].trackGroup[-1]][0]
                     else:
-                        connectionList = trackLayout.switchConnections[path[directionGroup][subGroup][-1][5]][1]
+                        connectionList = trackLayout.switchConnections[path[directionGroup][subGroup].trackGroup[-1]][1]
                     
                     # Get connection from switch index
                     connectionIndex = connectionList[switchPoint]
 
                     # Begin incrament
                     nextGroupNum = connectionIndex[0]
-                    nextTrackPos = trackLayout.trackGroup[connectionIndex[0]][0][connectionIndex[1]]
+                    nextTrackPos = trackLayout.trackGroupComp[connectionIndex[0]][0][connectionIndex[1]]
 
                     if direction == '+':
                         # Add points and steps
@@ -349,6 +366,15 @@ while (cycle < 250):
                         # Add points
                         sumPoints += pointBackwards
                         sumSteps += 1
+                    
+                    #   Reset vars used in flags to determine if a switch take / reverse is allowed
+                    switchPoint = False
+                    switchStepWait = 0
+                    cooldown = COOLDOWN_NORMAL
+                
+                #   Decrease cooldown if needed
+                if cooldown > 0:
+                    cooldown = cooldown - 1
 
                 # --------------------------------------- #
                 #   Enter the data back into the host object
@@ -362,18 +388,33 @@ while (cycle < 250):
                 path[directionGroup][subGroup].sumSteps = sumSteps
                 path[directionGroup][subGroup].switchPoint.append(switchPoint)
                 path[directionGroup][subGroup].switchStepWait = switchStepWait
-                path[directionGroup][subGroup].reverseStepWait = reverseStepWait  
-                
-                # Check if at track end      
+                path[directionGroup][subGroup].cooldown = cooldown
+
+
+                #   Check if at track end      
                 if len(trackLayout.trackEnd[nextGroupNum]) > 0:
                     for i in range(len(trackLayout.trackEnd[nextGroupNum])):
                         if trackLayout.trackEnd[i] == path[directionGroup][subGroup][-1][1]:
                             path[directionGroup][subGroup][-1][3] = True
 
+                #   Check if we self looped over the max allowed
+                for yAxis in range(len(path[directionGroup][subGroup].trackGroup)):
+                    groupNum = path[directionGroup][subGroup].trackGroup[yAxis]
+                    indexNum = path[directionGroup][subGroup].trackIndex[yAxis]
+                    selfLoop = 0
+                    for xAxis in range(len(path[directionGroup][subGroup].trackGroup)):
+                        if groupNum == path[directionGroup][subGroup].trackGroup[xAxis] and indexNum == path[directionGroup][subGroup].trackIndex[xAxis]:
+                            selfLoop += 1
+                        if selfLoop == SELF_LOOP_MAX:
+                            path[directionGroup][subGroup].pathEnd[-1] = True
+                            break
+                    if selfLoop == SELF_LOOP_MAX:
+                        break
+
             # ------------------------ Check if next point is a swtich ------------------------
             # ---------------------------------------------------------------------------------
 
-            currentGroupNum = trackLayout.trackGroup[path[directionGroup][subGroup].trackGroup[-1]][1]
+            currentGroupNum = trackLayout.trackGroupComp[path[directionGroup][subGroup].trackGroup[-1]][1]
             currentTrackPos = path[directionGroup][subGroup].trackIndex[-1]
             direction = path[directionGroup][subGroup].direction[-1]
             pathEnd = path[directionGroup][subGroup].pathEnd[-1]
@@ -383,7 +424,7 @@ while (cycle < 250):
             sumSteps = path[directionGroup][subGroup].sumSteps
             switchPoint = path[directionGroup][subGroup].switchPoint[-1]
             switchStepWait = path[directionGroup][subGroup].switchStepWait
-            reverseStepWait = path[directionGroup][subGroup].reverseStepWait
+            cooldown = path[directionGroup][subGroup].cooldown
             
             if pathEnd == False:
                 # Check if next point is a switch
@@ -394,7 +435,7 @@ while (cycle < 250):
                 switchContainer = trackLayout.switchPoints[currentGroupNum]
 
                 # If switch and not on cooldown
-                if switchStepWait == 0 and switchPoint == False:
+                if switchStepWait == 0 and switchPoint == False and cooldown == 0:
                     # Check if we get a matching index num
                     for i in range(len(switchContainer)):
                         # Break switch into components for index
@@ -404,7 +445,9 @@ while (cycle < 250):
                         if currentTrackPos == switchPos:
                             # Check if duplication was already performed
                             if switchPoint == False:
-                                if direction == switchVector or direction == '*':
+                                if direction == switchVector:
+                                    correctVector = 1
+                                elif switchVector == '*':
                                     correctVector = 1
                                 else:
                                     correctVector = 2
@@ -454,5 +497,4 @@ while (cycle < 250):
                         path[directionGroup][subGroup + 1].switchPoint.append("-" + str(switchIndex))
                         # Set wait steps
                         path[directionGroup][subGroup + 1].switchStepWait = STEPS_AFTER_SWITCH
-
-                        pass
+                        path[directionGroup][subGroup + 1].cooldown = COOLDOWN_REVERSE
