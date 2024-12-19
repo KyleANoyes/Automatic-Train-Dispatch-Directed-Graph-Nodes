@@ -7,5 +7,5 @@ The code here is a test of automatic train dispatch capabilities to operate my l
 
 Show is now complete and work is resuming on this 😁
 
-Context: This script is designed as a proof of concept to augment our signal system in JMRI used at CGMRC (https://cgmrc.com/events) with a more robust and modular pathing system
+Context: This script is designed as a proof of concept to augment our signal system in JMRI used at CGMRC (https://cgmrc.com/) with a more robust and modular pathing system
 This will also be used for my own layout at home
