@@ -78,6 +78,12 @@ class LayoutMaster():
         ]
 
         self.switchConnections = [
+            # TODO  Document this better, also further nest the list structure
+            #
+            #       The list has way too many nested components, it should
+            #           probably be broken up into one for positive and
+            #           nagative vectors, but leaving it for now as a low
+            #           priority item
             ## -- Negative direction, positive direction
             #00
             [[[1, 4], [1, 0]], [[1, 4], [1, 0]]],
@@ -269,6 +275,11 @@ def IncramentStepSwitch(currentPath, trackLayout):
 
 
 
+def SpawnPathCopy(directionGroup, currentPath):
+    path[directionGroup].append([])
+    path[directionGroup][-1] = copy.deepcopy(currentPath)
+
+
 def SwapDirection(currentPath):
     if currentPath.direction[-1] == '+':
         currentPath.direction[-1] = '-'
@@ -380,17 +391,16 @@ while (cycle < 250):
                                 if currentPath.direction[-1] == switchVector:
                                     correctVector = 1
                                 elif switchVector == '*':
-                                    correctVector = 2
+                                    correctVector = 1
                                 else:
-                                    correctVector = 3
+                                    correctVector = 2
                                 switchIndex = i
                                 break
 
                 # Based on vector, record state
                 if correctVector == 1:
                     # Create new subGroup list; deepcopy previous subGroup to new subGroup
-                    path[directionGroup].append([])
-                    path[directionGroup][-1] = copy.deepcopy(currentPath)
+                    SpawnPathCopy(directionGroup, currentPath)
 
                     # Switch and direction vectors are alligned, flag as positive
                     path[directionGroup][-1].vectorAlligned = True
@@ -398,21 +408,10 @@ while (cycle < 250):
 
                     # Change the vector to allow the copy to take the new path
 
-                # Based on vector, record state
+                    
                 if correctVector == 2:
                     # Create new subGroup list; deepcopy previous subGroup to new subGroup
-                    path[directionGroup].append([])
-                    path[directionGroup][-1] = copy.deepcopy(currentPath)
-
-                    # Switch and direction vectors are alligned, flag as positive
-                    path[directionGroup][-1].vectorAlligned = True
-                    path[directionGroup][-1].switchSequence = True
-
-                    
-                if correctVector == 3:
-                    # Create new subGroup list; deepcopy previous subGroup to new subGroup
-                    path[directionGroup].append([])
-                    path[directionGroup][-1] = copy.deepcopy(currentPath)
+                    SpawnPathCopy(directionGroup, currentPath)
 
                     # Switch and direction vectors are NOT alligned, flag as negative for reverse action processing
                     path[directionGroup][-1].vectorAlligned = False
