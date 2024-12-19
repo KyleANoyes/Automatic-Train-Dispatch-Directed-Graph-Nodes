@@ -5,6 +5,6 @@ This program is run off a coordinate based track layout and will successfully ro
 
 The code here is a test of automatic train dispatch capabilities to operate my layout in a completely autonomous manner
 
+Show is now complete and work is resuming on this 😁
 
-More testing needed to fix some self reversing actions, but waiting to update this until after CGMRC show is over and I have time agian :)
-https://cgmrc.com/events
+Context: This script is designes to augment our signal system in JMRI used at CGMRC (https://cgmrc.com/events) with a more robust and modular pathing system
