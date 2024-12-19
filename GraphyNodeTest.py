@@ -1,13 +1,11 @@
-# Current build date: Nov 21 2024
-
-# TODO: Figure out why we can break out of the group 1 loop. It has something to do with vector using the * sign
+# Current build date: Dec 19 2024
 
 import copy
 
 STEPS_AFTER_SWITCH = 3
 COOLDOWN_REVERSE = (STEPS_AFTER_SWITCH * 2)
 COOLDOWN_NORMAL = 1
-SELF_LOOP_MAX = 4
+SELF_LOOP_MAX = 3
 
 class LayoutMaster():
     def __init__(self):
@@ -66,11 +64,11 @@ class LayoutMaster():
             #04
             [[0, '+']],
             #05
-            [0, 1],
+            [[0, '+'], [1, '-']],
             #06
             [],
             #07
-            [2],
+            [[2, '*']],
             #08
             [4],
             #09
@@ -82,27 +80,27 @@ class LayoutMaster():
         self.switchConnections = [
             ## -- Negative direction, positive direction
             #00
-            [[1, 4], [1, 0]], [[1, 4], [1, 0]],
-            #01a, 01b
-            [[0, 7], [2, 0], [0, 5]], [[0, 7], [2, 0], [0, 5]],
+            [[[1, 4], [1, 0]], [[1, 4], [1, 0]]],
+            #01
+            [[[0, 7], [2, 0], [0, 5]], [[0, 7], [2, 0], [0, 5]]],
             #02
-            [[1, 0], [7, 0], [8, 0], [5, 0], [3, 0], [5, 6]], [[1, 0], [7, 0], [8, 0], [5, 0], [3, 0], [5, 6]],
+            [[[1, 0], [7, 0], [8, 0], [5, 0], [3, 0], [5, 6]], [[1, 0], [7, 0], [8, 0], [5, 0], [3, 0], [5, 6]]],
             #03
-            [[3, 4], [4, 0]], [[3, 4], [4, 0]],
+            [[[3, 4], [4, 0]], [[3, 4], [4, 0]]],
             #04
-            [[3, 0]], [[3, 0]],
+            [[[3, 0]], [[3, 0]]],
             #05
-            [[2, 3], [2, 5]], [[2, 3], [2, 5]],
+            [[[2, 3], [2, 5]], [[2, 3], [2, 5]]],
             #06
-            [[5, 6]], [[5, 6]],
-            #07a, 07b
-            [[2, 0], [1, 4]], [[2, 0], [1, 4]],
+            [[[5, 6]], [[5, 6]]],
+            #07
+            [[[2, 0], [1, 4]], [[2, 0], [1, 4]]],
             #08
-            [[2, 2], [9, 0], [9, 2], [10, 0], [2, 2], [9, 0], [9, 2], [10, 0]],
+            [[[2, 2], [9, 0], [9, 2], [10, 0], [2, 2], [9, 0], [9, 2], [10, 0]]],
             #09
-            [[8, 3], [8, 3]], [[8, 3], [8, 3]],
+            [[[8, 3], [8, 3]], [[8, 3], [8, 3]]],
             #10
-            [[8, 3]], [[8, 3]]
+            [[[8, 3]], [[8, 3]]]
         ]
 
         self.trackConnections = [
@@ -248,20 +246,55 @@ def IncramentStep(trackLayout, currentPath):
 
 
 
+def IncramentStepSwitch(currentPath, trackLayout):
+    #   IMPORTANT: Use currentPath.trackGroup[-2] after incramenting the group for index
+    #       This is critical as it maintains the path line prior to the switch
+    #
+    # TODO: Add a for loop to incrament through the last list index so we can implament
+    #           infanite throw switches. Critical for 3-way and greater.
+    #
+    #           Arguable if this should even be allowed behavior, but I guess design
+    #           against it for wider compatability
+    if currentPath.direction[-1] == '+':
+        currentPath.trackGroup.append(trackLayout.switchConnections[currentPath.trackGroup[-1]][1][1][0])
+        currentPath.trackIndex.append(trackLayout.switchConnections[currentPath.trackGroup[-2]][1][1][1])
+    else:
+        currentPath.trackGroup.append(trackLayout.switchConnections[currentPath.trackGroup[-1]][0][0][0])
+        currentPath.trackIndex.append(trackLayout.switchConnections[currentPath.trackGroup[-2]][0][0][1])
+    
+    # Reset switchSequence
+    currentPath.switchSequence = False
+
+    return currentPath
+
+
+
+def SwapDirection(currentPath):
+    if currentPath.direction[-1] == '+':
+        currentPath.direction[-1] = '-'
+    else:
+        currentPath.direction[-1] = '+'
+    
+    return currentPath
+
+
 # Begin main routing
 cycle = 0
 while (cycle < 250):
     for directionGroup in range(len(path)):
         for subGroup in range(len(path[directionGroup])):
-            print(F"{directionGroup}, {subGroup}")
             zz_directionGroup = directionGroup
             zz_subGroup = subGroup
 
             currentPath = path[directionGroup][subGroup]
+            print(F"{directionGroup}, {subGroup} -- trackGroup = {currentPath.trackGroup[-1]}, trackIndex = {currentPath.trackIndex[-1]}")
+
+            #   This is where we see the first attempt at creating a spinoff from *
+            if currentPath.trackIndex[-1] == 4 and currentPath.trackGroup[-1] == 1 and currentPath.switchSequence == True:
+                pass
 
             # debug point
-            if zz_subGroup == 1:
-                print(F"Current group: {currentPath.trackGroup[-1]}\nCurrent Pos: {currentPath.trackIndex[-1]}")
+            if currentPath.trackGroup[-1] == 3:
                 pass
 
             # If not end, proceed with program
@@ -283,20 +316,7 @@ while (cycle < 250):
                 # ------------------------- Record next step if switch -------------------------
                 # ------------------------------------------------------------------------------
                 elif currentPath.vectorAlligned == True:
-                    # 
-                    if currentPath.direction[-1] == '+':
-                        currentPath.trackGroup.append(trackLayout.switchConnections[currentPath.trackGroup[-1]][1][0])
-                        currentPath.trackIndex.append(trackLayout.switchConnections[currentPath.trackGroup[-1]][1][1])
-                        
-                    else:
-                        currentPath.trackGroup.append(trackLayout.switchConnections[currentPath.trackGroup[-1]][0][0])
-                        currentPath.trackIndex.append(trackLayout.switchConnections[currentPath.trackGroup[-1]][0][1])
-
-                    # Incrament direction
-                    currentPath.direction.append(currentPath.direction[-1])
-                    
-                    # Reset switchSequence
-                    currentPath.switchSequence = False
+                    IncramentStepSwitch(currentPath, trackLayout)
 
                 # ----------------- Process forward movement before reversing ------------------
                 # ------------------------------------------------------------------------------
@@ -304,21 +324,21 @@ while (cycle < 250):
                     currentPath = IncramentStep(trackLayout, currentPath)
 
                     # Adjust switch step wait
-                    if currentPath.switchStepWait > 0 and currentPath.reverseNeeded == True:
+                    if currentPath.switchStepWait == 0 and currentPath.reverseNeeded == True:
                         # Flip direction then flag reverse needed as false
-                        if currentPath.direction[-1] == '+':
-                            currentPath.direction[-1] = '-'
-                        else:
-                            currentPath.direction[-1] = '+'
-                        
+                        currentPath = SwapDirection(currentPath)
+
                         currentPath.reverseNeeded = False
+
+                    elif currentPath.switchStepWait > 0:
                         currentPath.switchStepWait = currentPath.switchStepWait - 1
                     
                     # Adjust cooldown, but if it's zero, allow new switch catch
                     if currentPath.cooldown > 0:
                         currentPath.cooldown = currentPath.cooldown - 1
                     else:
-                        currentPath.switchSequence = False
+                        # Add incramnet here so that we aren't behind the choo choo. Kinda odd, but it works
+                        currentPath = IncramentStep(trackLayout, currentPath)
                         currentPath.vectorAlligned = True
                     
                     pass
@@ -331,7 +351,7 @@ while (cycle < 250):
                 #   Check if at track end      
                 if len(trackLayout.trackEnd[currentPath.trackGroup[-1]]) > 0:
                     for i in range(len(trackLayout.trackEnd[currentPath.trackGroup[-1]])):
-                        if trackLayout.trackEnd[i] == path[directionGroup][subGroup][-1][1]:
+                        if trackLayout.trackEnd[i] == currentPath.trackIndex:
                             path[directionGroup][subGroup][-1][3] = True
 
 
@@ -341,6 +361,10 @@ while (cycle < 250):
             if currentPath.pathEnd == False:
                 # Check if next point is a switch
                 correctVector = 0
+
+                # DEBUG
+                if currentPath.trackGroup[-1] == 1 and currentPath.trackIndex == 4:
+                    pass
 
                 # If switch and not on cooldown
                 if currentPath.switchStepWait == 0 and currentPath.switchSequence == False and currentPath.cooldown == 0:
@@ -356,52 +380,43 @@ while (cycle < 250):
                                 if currentPath.direction[-1] == switchVector:
                                     correctVector = 1
                                 elif switchVector == '*':
-                                    correctVector = 1
-                                else:
                                     correctVector = 2
+                                else:
+                                    correctVector = 3
                                 switchIndex = i
                                 break
 
                 # Based on vector, record state
                 if correctVector == 1:
-                    newListExist = True
-                    # Check if operation has already been performed
-                    try:
-                        #   If we can find a list length, then we know it exist. 
-                        #   This is crude, but it does indeed work :)
-                        if (len(path[directionGroup][subGroup + 1].direction) > 0):
-                            newListExist = True
-                    except:
-                        newListExist = False
+                    # Create new subGroup list; deepcopy previous subGroup to new subGroup
+                    path[directionGroup].append([])
+                    path[directionGroup][-1] = copy.deepcopy(currentPath)
 
-                    if newListExist == False:
-                        # Create new subGroup list; deepcopy previous subGroup to new subGroup
-                        path[directionGroup].append([])
-                        path[directionGroup][subGroup + 1] = copy.deepcopy(currentPath)
+                    # Switch and direction vectors are alligned, flag as positive
+                    path[directionGroup][-1].vectorAlligned = True
+                    path[directionGroup][-1].switchSequence = True
 
-                        # Switch and direction vectors are alligned, flag as positive
-                        path[directionGroup][subGroup + 1].vectorAlligned = True
-                        path[directionGroup][subGroup + 1].switchSequence = True
-                    
+                    # Change the vector to allow the copy to take the new path
+
+                # Based on vector, record state
                 if correctVector == 2:
-                    newListExist = True
-                    # Check if operation has already been performed
-                    try:
-                        #   If we can find a list length, then we know it exist. 
-                        #   This is crude, but it does indeed work :)
-                        if (len(path[directionGroup][subGroup + 1].direction) > 0):
-                            newListExist = True
-                    except:
-                        newListExist = False
+                    # Create new subGroup list; deepcopy previous subGroup to new subGroup
+                    path[directionGroup].append([])
+                    path[directionGroup][-1] = copy.deepcopy(currentPath)
 
-                    if newListExist == False:
-                        # Create new subGroup list; deepcopy previous subGroup to new subGroup
-                        path[directionGroup].append([])
-                        path[directionGroup][subGroup + 1] = copy.deepcopy(currentPath)
+                    # Switch and direction vectors are alligned, flag as positive
+                    path[directionGroup][-1].vectorAlligned = True
+                    path[directionGroup][-1].switchSequence = True
 
-                        # Switch and direction vectors are NOT alligned, flag as negative for reverse action processing
-                        path[directionGroup][subGroup + 1].vectorAlligned = False
-                        path[directionGroup][subGroup + 1].switchSequence = True
-                        path[directionGroup][subGroup + 1].switchStepWait = STEPS_AFTER_SWITCH
-                        path[directionGroup][subGroup + 1].cooldown = COOLDOWN_REVERSE
-                        path[directionGroup][subGroup + 1].reverseNeeded = True
+                    
+                if correctVector == 3:
+                    # Create new subGroup list; deepcopy previous subGroup to new subGroup
+                    path[directionGroup].append([])
+                    path[directionGroup][-1] = copy.deepcopy(currentPath)
+
+                    # Switch and direction vectors are NOT alligned, flag as negative for reverse action processing
+                    path[directionGroup][-1].vectorAlligned = False
+                    path[directionGroup][-1].switchSequence = True
+                    path[directionGroup][-1].switchStepWait = STEPS_AFTER_SWITCH
+                    path[directionGroup][-1].cooldown = COOLDOWN_REVERSE
+                    path[directionGroup][-1].reverseNeeded = True
