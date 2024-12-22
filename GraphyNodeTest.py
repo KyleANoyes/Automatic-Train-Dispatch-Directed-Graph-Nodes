@@ -58,7 +58,7 @@ class LayoutMaster():
             #01
             [[0, '*'], [4, '*']],
             #02
-            [[1, '-'], [2, '+'], [3, '+'], [4, '+'], [5, '*']],
+            [[1, '-'], [3, '+'], [4, '+'], [5, '+'], [6, '*']],
             #03
             [],
             #04
@@ -129,6 +129,30 @@ class LayoutMaster():
             [[[7, 1]], [[7, 1]]],
             #08
             [[[8, 0]], [[8, 3]]],
+            #09
+            [[[]], [[]]],
+            #10
+            [[[]], [[]]]
+        ]
+        self.switchInverseDir = [
+            #00
+            [[[[False]]], [[[False]]]],
+            #01
+            [[[[0, 7]], [[7, 2]]], [[[2, 0]], [[7, 0], [0, 5]]]],
+            #02
+            [[[[1, 0]], [[4, 0]]], [[[8, 0]], [[5, 0]], [[5, 6]], [[3, 1]]]],
+            #03
+            [[[]], [[]]],
+            #04
+            [[[]], [[[4, 2]]]],
+            #05
+            [[[[5, 6]]], [[[5, 1], [5, 2], [5, 3], [5, 4]]]],
+            #06
+            [[[]], [[]]],
+            #07
+            [[[[1, 4]]], [[[1, 4]]]],
+            #08
+            [[[[2, 3]]], [[[9, 0]]]],
             #09
             [[[]], [[]]],
             #10
@@ -208,6 +232,7 @@ class TrainPath:
         self.sumPoints = 0
         self.sumSteps = 0
         self.selfLoop = 0
+        self.inverseDirection = False
 
 
 def TrainPathMain():
@@ -224,9 +249,11 @@ def TrainPathMain():
         # Count up/down the list
     path = [[], []]
 
-    # Set location and target
+    #   Set location and target
     start = [0, 2]
-    #ziel = [7, 1]
+    #   Real target
+    #ziel = [7, 0]
+    #   Fake target to force inifinite search
     ziel = [1, 99]
 
     target = [start, ziel]
@@ -260,7 +287,9 @@ def IncramentStep(trackLayout, currentPath, config, groupIndexPos):
                 currentPath.trackGroup.append(currentPath.trackGroup[-1])
                 currentPath.trackIndex.append(trackGroup[0])
             else:
-                pass
+                connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][1]
+                currentPath.trackGroup.append(connection[0])
+                currentPath.trackIndex.append(connection[1])
         
         # Add points and steps
         currentPath.sumPoints += pointForwards
@@ -278,7 +307,9 @@ def IncramentStep(trackLayout, currentPath, config, groupIndexPos):
                 currentPath.trackGroup.append(currentPath.trackGroup[-1])
                 currentPath.trackIndex.append(trackGroup[-1])
             else:
-                pass
+                connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][0]
+                currentPath.trackGroup.append(connection[0])
+                currentPath.trackIndex.append(connection[1])
 
         # Add points
         currentPath.sumPoints += pointBackwards
@@ -290,17 +321,7 @@ def IncramentStep(trackLayout, currentPath, config, groupIndexPos):
     return currentPath
 
 
-
 def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
-    #   IMPORTANT: Use currentPath.trackGroup[-2] after incramenting the group for index
-    #       This is critical as it maintains the path line prior to the switch
-    #
-    # TODO: Add a for loop to incrament through the last list index so we can implament
-    #           infanite throw switches. Critical for 3-way and greater.
-    #
-    #           Arguable if this should even be allowed behavior, but I guess design
-    #           against it for wider compatability
-
     #   First get the switch group container
     if currentPath.direction[-1] == '+':
         switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][1]
@@ -310,30 +331,42 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
         switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][0]
 
 
+    switchThrowList = "Ooga booga grug mad"
+
     for i in range(len(switchPosition)):
         pathPos = [currentPath.trackGroup[-1], currentPath.trackIndex[-1]]
         
         if switchPosition[i] == pathPos:
-            switchThrow = switchPosition[i]
+            switchThrowList = switchConnection[i]
             break
 
-    #   TODO: We now know what throws we can use, time to act on it :D
+    #   If we hit this, something seriously wrong has gone on. This means that we tried calling
+    #       the switch function when we were not at a switch. This makes grug unhappy
+    if switchThrowList == "Ooga booga grug mad":
+        pass
+
+    #   TODO:   We need to add some flags to stop the children from being allowed to reverse
+    #               immediately after completing a switch motion
+    #
+    #           This is due to an improper counting system where we use '+' and '-'.
+    #               The logic is fine, but we need to inverse the direction when using
+    #               a switch that is in a differnt list polarity               
 
     #   Now that we have the container, begin the pathing
-    for switchThrow in range(len(switchPosition)):
+    for switchThrow in range(len(switchThrowList)):
         basePath = copy.deepcopy(currentPath)
         
         if switchThrow == 0:
-            currentPath.trackGroup.append(switchThrow[switchThrow][0])
-            currentPath.trackIndex.append(switchThrow[switchThrow][1])
+            currentPath.trackGroup.append(switchThrowList[switchThrow][0])
+            currentPath.trackIndex.append(switchThrowList[switchThrow][1])
                 
             # Reset switchSequence
             currentPath.switchSequence = False
 
         else:
             SpawnPathCopy(path, directionGroup, basePath)
-            path[directionGroup][-1].trackGroup.append(switchThrow[switchThrow][0])
-            path[directionGroup][-1].trackIndex.append(switchThrow[switchThrow][1])
+            path[directionGroup][-1].trackGroup.append(switchThrowList[switchThrow][0])
+            path[directionGroup][-1].trackIndex.append(switchThrowList[switchThrow][1])
 
             # Reset switchSequence
             path[directionGroup][-1].switchSequence = False
@@ -346,6 +379,29 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
 def SpawnPathCopy(path, directionGroup, currentPath):
     path[directionGroup].append([])
     path[directionGroup][-1] = copy.deepcopy(currentPath)
+
+
+def SpawnIndependantChild(correctVector, path, directionGroup, currentPath):
+    #   Based on vector, record state
+    if correctVector == 1 or correctVector == 2:
+        # Create new subGroup list; deepcopy previous subGroup to new subGroup
+        SpawnPathCopy(path, directionGroup, currentPath)
+
+        # Switch and direction vectors are alligned, flag as positive
+        path[directionGroup][-1].vectorAlligned = True
+        path[directionGroup][-1].switchSequence = True
+
+        
+    if correctVector == 3 or correctVector == 2:
+        #   Create new subGroup list; deepcopy previous subGroup to new subGroup
+        SpawnPathCopy(path, directionGroup, currentPath)
+
+        #   Switch and direction vectors are NOT alligned, flag as negative for reverse action processing
+        path[directionGroup][-1].vectorAlligned = False
+        path[directionGroup][-1].switchSequence = True
+        path[directionGroup][-1].switchStepWait = STEPS_AFTER_SWITCH
+        path[directionGroup][-1].cooldown = COOLDOWN_REVERSE
+        path[directionGroup][-1].reverseNeeded = True
 
 
 def SwapDirection(currentPath):
@@ -388,6 +444,17 @@ def CheckSwitch(currentPath, trackLayout):
                         break
     
     return correctVector
+
+
+def CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup):
+    if len(trackLayout.trackEnd[currentPath.trackGroup[-1]]) > 0:
+        trackEndPoints = trackLayout.trackEnd[currentPath.trackGroup[-1]]
+        for i in range(len(trackEndPoints)):
+            if trackEndPoints[i] == currentPath.trackIndex[-1]:
+                path[directionGroup][subGroup].pathEnd = True
+
+def CheckTrackEndFull(trackLayout, path):
+    pass
 
 
 def CreateTrainPath(path, trackLayout, target, config):
@@ -434,6 +501,13 @@ def CreateTrainPath(path, trackLayout, target, config):
 
                     stopSerch = True
                     break
+
+
+                
+                if directionGroup == 0 and subGroup == 23:
+                    pass
+                #   Check if we are at an end point
+                CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup)
 
                 #   If not end, proceed with program
                 if currentPath.pathEnd == False:
@@ -484,36 +558,11 @@ def CreateTrainPath(path, trackLayout, target, config):
                     else:
                         print("ERROR: Impossible state reached")
 
-                    #   Check if at track end      
-                    if len(trackLayout.trackEnd[currentPath.trackGroup[-1]]) > 0:
-                        for i in range(len(trackLayout.trackEnd[currentPath.trackGroup[-1]])):
-                            if trackLayout.trackEnd[i] == currentPath.trackIndex:
-                                path[directionGroup][subGroup][-1][3] = True
-
-
                     #   Check if current position is on a switch
                     correctVector = CheckSwitch(currentPath, trackLayout)
 
-                    #   Based on vector, record state
-                    if correctVector == 1 or correctVector == 2:
-                        # Create new subGroup list; deepcopy previous subGroup to new subGroup
-                        SpawnPathCopy(path, directionGroup, currentPath)
-
-                        # Switch and direction vectors are alligned, flag as positive
-                        path[directionGroup][-1].vectorAlligned = True
-                        path[directionGroup][-1].switchSequence = True
-
-                        
-                    if correctVector == 3 or correctVector == 2:
-                        #   Create new subGroup list; deepcopy previous subGroup to new subGroup
-                        SpawnPathCopy(path, directionGroup, currentPath)
-
-                        #   Switch and direction vectors are NOT alligned, flag as negative for reverse action processing
-                        path[directionGroup][-1].vectorAlligned = False
-                        path[directionGroup][-1].switchSequence = True
-                        path[directionGroup][-1].switchStepWait = STEPS_AFTER_SWITCH
-                        path[directionGroup][-1].cooldown = COOLDOWN_REVERSE
-                        path[directionGroup][-1].reverseNeeded = True
+                    #   This creates a more serious new spawn compared to the other spawn
+                    SpawnIndependantChild(correctVector, path, directionGroup, currentPath)
 
     return successfulPath
 
