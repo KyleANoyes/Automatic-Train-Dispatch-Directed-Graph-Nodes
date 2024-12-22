@@ -90,23 +90,47 @@ class LayoutMaster():
             #00
             [[[[1, 4]]], [[[1, 0]]]],
             #01
-            [[[[0, 7]], [[7, 2]]], [[[2 ,0]], [[7, 0], [0, 5]]]],
+            [[[[0, 7]], [[7, 2]]], [[[2, 0]], [[7, 0], [0, 5]]]],
             #02
-            [[[[1, 0]], [], [], [], [[4, 0]]], [[[]], [[8, 0]], [[5, 0]], [[5, 6]], [[3, 1]]]],
+            [[[[1, 0]], [[4, 0]]], [[[8, 0]], [[5, 0]], [[5, 6]], [[3, 1]]]],
             #03
             [[[]], [[]]],
             #04
             [[[]], [[[4, 2]]]],
             #05
-            [[[[5, 5]]], [[5, 1], [5, 2], [5, 3], [5, 4]]],
+            [[[[5, 6]]], [[[5, 1], [5, 2], [5, 3], [5, 4]]]],
             #06
             [[[]], [[]]],
             #07
             [[[[1, 4]]], [[[1, 4]]]],
             #08
-            [[[[2, 2]]], [[]]],
+            [[[[2, 3]]], [[[9, 0]]]],
             #09
-            [[[[9, 0]]], [[]]],
+            [[[]], [[]]],
+            #10
+            [[[]], [[]]]
+        ]
+        self.switchPosition = [
+            #00
+            [[[0, 5]], [[0, 7]]],
+            #01
+            [[[1, 0], [1, 4]], [[1, 0], [1, 4]]],
+            #02
+            [[[2, 1], [2, 6]], [[2, 3], [2, 4], [2, 5], [2, 6]]],
+            #03
+            [[[]], [[]]],
+            #04
+            [[[]], [[4, 0]]],
+            #05
+            [[[5, 5]], [[5, 0]]],
+            #06
+            [[[]], [[]]],
+            #07
+            [[[7, 1]], [[7, 1]]],
+            #08
+            [[[8, 0]], [[8, 3]]],
+            #09
+            [[[]], [[]]],
             #10
             [[[]], [[]]]
         ]
@@ -117,11 +141,11 @@ class LayoutMaster():
             #01
             [],
             #02
-            [[3, 0]],
+            [[], [3, 0]],
             #03
-            [[2, -1]],
+            [[2, -1], [2, -1]],
             #04
-            [[2, -1]],
+            [[], [2, -1]],
             #05
             [],
             #06
@@ -131,9 +155,9 @@ class LayoutMaster():
             #08
             [],
             #09
-            [],
+            [[8, 3], [8, 3]],
             #10
-            []
+            [[8, 3], [8, 3]]
         ]
 
         self.trackEnd = [
@@ -202,7 +226,8 @@ def TrainPathMain():
 
     # Set location and target
     start = [0, 2]
-    ziel = [7, 1]
+    #ziel = [7, 1]
+    ziel = [1, 99]
 
     target = [start, ziel]
 
@@ -234,6 +259,8 @@ def IncramentStep(trackLayout, currentPath, config, groupIndexPos):
             if len(trackLayout.trackConnections[currentPath.trackGroup[-1]]) == 0:
                 currentPath.trackGroup.append(currentPath.trackGroup[-1])
                 currentPath.trackIndex.append(trackGroup[0])
+            else:
+                pass
         
         # Add points and steps
         currentPath.sumPoints += pointForwards
@@ -250,6 +277,8 @@ def IncramentStep(trackLayout, currentPath, config, groupIndexPos):
             if len(trackLayout.trackConnections[currentPath.trackGroup[-1]]) == 0:
                 currentPath.trackGroup.append(currentPath.trackGroup[-1])
                 currentPath.trackIndex.append(trackGroup[-1])
+            else:
+                pass
 
         # Add points
         currentPath.sumPoints += pointBackwards
@@ -272,30 +301,42 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
     #           Arguable if this should even be allowed behavior, but I guess design
     #           against it for wider compatability
 
+    #   First get the switch group container
     if currentPath.direction[-1] == '+':
-        switchContainer = trackLayout.switchConnection[currentPath.trackGroup[-1]][1]
+        switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][1]
+        switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][1]
     else:
-        switchContainer = trackLayout.switchConnection[currentPath.trackGroup[-1]][0]
+        switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][0]
+        switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][0]
 
-    for switchActions in range(len(switchContainer)):
-        switchModule = switchContainer[switchActions]
-        for switchThrow in range(len(switchModule)):
-            basePath = copy.deepcopy(currentPath)
-            
-            if switchThrow == 0:
-                currentPath.trackGroup.append(switchModule[switchThrow][0])
-                currentPath.trackIndex.append(switchModule[switchThrow][1])
-                    
-                # Reset switchSequence
-                currentPath.switchSequence = False
 
-            else:
-                SpawnPathCopy(path, directionGroup, basePath)
-                path[directionGroup][-1].trackGroup.append(switchModule[switchThrow][0])
-                path[directionGroup][-1].trackIndex.append(switchModule[switchThrow][1])
+    for i in range(len(switchPosition)):
+        pathPos = [currentPath.trackGroup[-1], currentPath.trackIndex[-1]]
+        
+        if switchPosition[i] == pathPos:
+            switchThrow = switchPosition[i]
+            break
 
-                # Reset switchSequence
-                path[directionGroup][-1].switchSequence = False
+    #   TODO: We now know what throws we can use, time to act on it :D
+
+    #   Now that we have the container, begin the pathing
+    for switchThrow in range(len(switchPosition)):
+        basePath = copy.deepcopy(currentPath)
+        
+        if switchThrow == 0:
+            currentPath.trackGroup.append(switchThrow[switchThrow][0])
+            currentPath.trackIndex.append(switchThrow[switchThrow][1])
+                
+            # Reset switchSequence
+            currentPath.switchSequence = False
+
+        else:
+            SpawnPathCopy(path, directionGroup, basePath)
+            path[directionGroup][-1].trackGroup.append(switchThrow[switchThrow][0])
+            path[directionGroup][-1].trackIndex.append(switchThrow[switchThrow][1])
+
+            # Reset switchSequence
+            path[directionGroup][-1].switchSequence = False
 
 
     return currentPath
@@ -324,21 +365,20 @@ def CheckSwitch(currentPath, trackLayout):
         # Check if next point is a switch
         correctVector = 0
 
-        # DEBUG
-        if currentPath.trackGroup[-1] == 1 and currentPath.trackIndex == 4:
-            pass
-
         # If switch and not on cooldown
         if currentPath.switchStepWait == 0 and currentPath.switchSequence == False and currentPath.cooldown == 0:
+            switchModule = trackLayout.switchSequences[currentPath.trackGroup[-1]]
+
             # Check if we get a matching index num
-            for i in range(len(trackLayout.switchSequences[currentPath.trackGroup[-1]])):
+            for i in range(len(switchModule)):
                 # Break switch into components for index
-                switchPos = trackLayout.switchSequences[currentPath.trackGroup[-1]][i][0]
-                switchVector = trackLayout.switchSequences[currentPath.trackGroup[-1]][i][1]
+                switchPos = switchModule[i][0]
+                switchVector = switchModule[i][1]
                 # Check if path & switch pos match
                 if currentPath.trackIndex[-1] == switchPos:
                     #   Check if we are already sequencing a switch action
                     if currentPath.switchSequence == False:
+                        #   Process the vector data
                         if currentPath.direction[-1] == switchVector:
                             correctVector = 1
                         elif switchVector == '*':
