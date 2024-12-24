@@ -1,4 +1,4 @@
-# Current build date: Dec 19 2024
+# Current build date: Dec 24 2024
 
 import copy
 
@@ -78,13 +78,8 @@ class LayoutMaster():
         ]
             # TODO  Document this better, also further nest the list structure
             #
-            #       The list has way too many nested components, it should
-            #           probably be broken up into one for positive and
-            #           nagative vectors, but leaving it for now as a low
-            #           priority item
-            ## -- Negative direction, positive direction
-            #
-            # This is the template to use [Switch[Direction[ConnectionGroup[TrackConnection]]] = [[[[]]], [[[]]]]
+            #       This is the template to use:
+            #       [Switch[Direction[ConnectionGroup[TrackConnection]]] = [[[[]]], [[[]]]]
             #
         self.switchConnection = [
             #00
@@ -136,23 +131,23 @@ class LayoutMaster():
         ]
         self.switchInverseDir = [
             #00
-            [[[[False]]], [[[False]]]],
+            [[[]], [[[]]]],
             #01
-            [[[[0, 7]], [[7, 2]]], [[[2, 0]], [[7, 0], [0, 5]]]],
+            [[[], []], [[], []]],
             #02
-            [[[[1, 0]], [[4, 0]]], [[[8, 0]], [[5, 0]], [[5, 6]], [[3, 1]]]],
+            [[[], []], [[], [], [], []]],
             #03
             [[[]], [[]]],
             #04
-            [[[]], [[[4, 2]]]],
+            [[[]], [[]]],
             #05
-            [[[[5, 6]]], [[[5, 1], [5, 2], [5, 3], [5, 4]]]],
+            [[[]], [[]]],
             #06
             [[[]], [[]]],
             #07
-            [[[[1, 4]]], [[[1, 4]]]],
+            [[[]], [[]]],
             #08
-            [[[[2, 3]]], [[[9, 0]]]],
+            [[[]], [[]]],
             #09
             [[[]], [[]]],
             #10
@@ -182,6 +177,31 @@ class LayoutMaster():
             [[8, 3], [8, 3]],
             #10
             [[8, 3], [8, 3]]
+        ]
+
+        self.trackInverseDir = [
+            #00
+            [],
+            #01
+            [],
+            #02
+            [[], []],
+            #03
+            [[], []],
+            #04
+            [[], []],
+            #05
+            [],
+            #06
+            [],
+            #07
+            [],
+            #08
+            [],
+            #09
+            [[], []],
+            #10
+            [[], []]
         ]
 
         self.trackEnd = [
@@ -236,18 +256,11 @@ class TrainPath:
 
 
 def TrainPathMain():
-    # Config
-    # pointForwards = 1
-    # pointBackwards = 5
-    # pointReverse = 10
-    # maxCycle
-
-    config = [1, 5, 10, 150]
-
-    # Container for the path
-        # Create two list: [0] = forwards, [1] backwards
-        # Count up/down the list
-    path = [[], []]
+    #   Config creation
+    pointForwards = 1
+    pointBackwards = 5
+    pointReverse = 10
+    maxCycle = 150
 
     #   Set location and target
     start = [0, 2]
@@ -256,67 +269,101 @@ def TrainPathMain():
     #   Fake target to force inifinite search
     ziel = [1, 99]
 
+    #   Package config
+    config = [pointForwards, pointBackwards, pointReverse, maxCycle]
     target = [start, ziel]
 
-    #   Create track object, then translate human list into computer friendly list
+    #   Create track object
     trackLayout = LayoutMaster()
     trackLayout.CreateTrackComp()
 
+    #   Configure vector inverse points
+    ConfigTrackConnectionInverse(trackLayout)
+    ConfigTrackSwitchInverse(trackLayout)
+
+
+    #   Create path container and begin search
+    path = [[], []]
     successfulPath = CreateTrainPath(path, trackLayout, target, config)
 
     pass
 
 
-def IncramentStep(trackLayout, currentPath, config, groupIndexPos):
+def IncramentStepLite(trackLayout, currentPath):
+    # Check if direction indicates positive
+    if currentPath.direction[-1] == '+':
+        currentPath = StepForwards(trackLayout, currentPath)
+
+    else:
+        currentPath = StepBackwards(trackLayout, currentPath)
+
+    #   Incrament direction
+    currentPath.direction.append(currentPath.direction[-1])
+
+    return currentPath
+
+
+def IncramentStepFull(trackLayout, currentPath, config):
     pointForwards = config[0]
     pointBackwards = config[1]
     pointReverse = config[2]
 
-    trackGroup = trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0]
     # Check if direction indicates positive
     if currentPath.direction[-1] == '+':
-        groupLength = len(trackGroup) - 1
-        # Check if end of list
-        if currentPath.trackIndex[-1] < groupLength:
-            # If less, then incrament
-            currentPath.trackGroup.append(currentPath.trackGroup[-1])
-            currentPath.trackIndex.append(trackGroup[currentPath.trackIndex[-1] + 1])
-        else:
-            # Else, start back at front of the list
-            if len(trackLayout.trackConnections[currentPath.trackGroup[-1]]) == 0:
-                currentPath.trackGroup.append(currentPath.trackGroup[-1])
-                currentPath.trackIndex.append(trackGroup[0])
-            else:
-                connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][1]
-                currentPath.trackGroup.append(connection[0])
-                currentPath.trackIndex.append(connection[1])
-        
+        currentPath = StepForwards(trackLayout, currentPath)
+
         # Add points and steps
         currentPath.sumPoints += pointForwards
         currentPath.sumSteps += 1
-    
-    # Check if direction indicates negative
     else:
-        # Check if start of list
-        if groupIndexPos != 0:
-            # If so, loop to negative index
-            currentPath.trackGroup.append(currentPath.trackGroup[-1])
-            currentPath.trackIndex.append(trackGroup[currentPath.trackIndex[-1] - 1])
-        else:
-            if len(trackLayout.trackConnections[currentPath.trackGroup[-1]]) == 0:
-                currentPath.trackGroup.append(currentPath.trackGroup[-1])
-                currentPath.trackIndex.append(trackGroup[-1])
-            else:
-                connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][0]
-                currentPath.trackGroup.append(connection[0])
-                currentPath.trackIndex.append(connection[1])
+        currentPath = StepBackwards(trackLayout, currentPath)
 
-        # Add points
+        #   Add points
         currentPath.sumPoints += pointBackwards
         currentPath.sumSteps += 1
 
-    # Incrament direction
+    #   Incrament direction
     currentPath.direction.append(currentPath.direction[-1])
+
+    return currentPath
+
+
+def StepForwards(trackLayout, currentPath):
+    trackGroup = trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0]
+    groupLength = len(trackGroup) - 1
+    # Check if end of list
+    if currentPath.trackIndex[-1] < groupLength:
+        # If less, then incrament
+        currentPath.trackGroup.append(currentPath.trackGroup[-1])
+        currentPath.trackIndex.append(trackGroup[currentPath.trackIndex[-1] + 1])
+    else:
+        # Else, start back at front of the list
+        if len(trackLayout.trackConnections[currentPath.trackGroup[-1]]) == 0:
+            currentPath.trackGroup.append(currentPath.trackGroup[-1])
+            currentPath.trackIndex.append(trackGroup[0])
+        else:
+            connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][1]
+            currentPath.trackGroup.append(connection[0])
+            currentPath.trackIndex.append(connection[1])
+
+    return currentPath
+
+
+def StepBackwards(trackLayout, currentPath):
+    trackGroup = trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0]
+    #   Check if start of list
+    if currentPath.trackIndex[-1] != 0:
+        #   If so, loop to negative index
+        currentPath.trackGroup.append(currentPath.trackGroup[-1])
+        currentPath.trackIndex.append(trackGroup[currentPath.trackIndex[-1] - 1])
+    else:
+        if len(trackLayout.trackConnections[currentPath.trackGroup[-1]]) == 0:
+            currentPath.trackGroup.append(currentPath.trackGroup[-1])
+            currentPath.trackIndex.append(trackGroup[-1])
+        else:
+            connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][0]
+            currentPath.trackGroup.append(connection[0])
+            currentPath.trackIndex.append(connection[1])
 
     return currentPath
 
@@ -326,9 +373,13 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
     if currentPath.direction[-1] == '+':
         switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][1]
         switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][1]
+        switchInverseList = trackLayout.switchInverseDir[currentPath.trackGroup[-1]][1]
+        initialDirection = '+'
     else:
         switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][0]
         switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][0]
+        switchInverseList = trackLayout.switchInverseDir[currentPath.trackGroup[-1]][0]
+        initialDirection = '-'
 
 
     switchThrowList = "Ooga booga grug mad"
@@ -338,10 +389,11 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
         
         if switchPosition[i] == pathPos:
             switchThrowList = switchConnection[i]
+            switchInverseList = switchInverseList[i]
             break
 
-    #   If we hit this, something seriously wrong has gone on. This means that we tried calling
-    #       the switch function when we were not at a switch. This makes grug unhappy
+    #   If we hit this, This means that we tried calling the switch function when we were 
+    #       not at a switch. This makes grug unhappy
     if switchThrowList == "Ooga booga grug mad":
         pass
 
@@ -357,23 +409,36 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
         basePath = copy.deepcopy(currentPath)
         
         if switchThrow == 0:
+            #   Step forward
             currentPath.trackGroup.append(switchThrowList[switchThrow][0])
             currentPath.trackIndex.append(switchThrowList[switchThrow][1])
                 
-            # Reset switchSequence
+            #   Reset switchSequence
             currentPath.switchSequence = False
 
+            #   Add direction
+            currentPath.direction.append(initialDirection)
+
         else:
+            #   Spawn a new child path
             SpawnPathCopy(path, directionGroup, basePath)
+
+            #   Step forward with the new child
             path[directionGroup][-1].trackGroup.append(switchThrowList[switchThrow][0])
             path[directionGroup][-1].trackIndex.append(switchThrowList[switchThrow][1])
 
             # Reset switchSequence
             path[directionGroup][-1].switchSequence = False
 
+            #   Add direction
+            path[directionGroup][-1].direction.append(initialDirection)
+        
+        #   Inverse direction if needed
+        #   This function is not ready yet
+        #if switchInverseList[switchThrow][0] == True:
+            #currentPath = InverseDirection(path[directionGroup][-1])
 
     return currentPath
-
 
 
 def SpawnPathCopy(path, directionGroup, currentPath):
@@ -453,8 +518,78 @@ def CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup):
             if trackEndPoints[i] == currentPath.trackIndex[-1]:
                 path[directionGroup][subGroup].pathEnd = True
 
-def CheckTrackEndFull(trackLayout, path):
+
+def ConfigTrackConnectionInverse(trackLayout):
+    #   TODO: Need to fix this critical component. The functionality is there for
+    #           creating steps, but now we need to use the found data correctly.
+    #           This is really really good though, we are on the cusp of an
+    #           having an insanely robust and modular tool for all JMRI 
+    #           panels!!!
+
+
+
+    #   Extract the needed data from the object for simplicity
+    #   Agent container
+    agent = [[], []]
+
+    for yAxis in range(len(trackLayout.trackConnections)):
+        if len(trackLayout.trackConnections[yAxis]) != 0:
+            debug = trackLayout.trackConnections[yAxis]
+
+            #   Create agents and initialize two starts to each end of track
+            agent[0] = TrainPath('-', yAxis, trackLayout.trackGroupComp[yAxis][0][0])
+            agent[1] = TrainPath('+', yAxis, trackLayout.trackGroupComp[yAxis][0][-1])
+
+            #   Gather negative connection data if applicable
+            if len(trackLayout.trackConnections[yAxis][0]) != 0:
+                for i in range(2):
+                    agent[0] = IncramentStepLite(trackLayout, agent[0])
+
+                #   Critical debug point - need to check if data here makes sense before passing into my else-if
+                debugA0 = agent[0].trackGroup[0]
+                debugA1 = agent[0].trackGroup[2]
+                debugA2 = agent[0].trackIndex[0]
+                debugA3 = agent[0].trackIndex[2]
+
+                #   Check if the track connection step resulted in an auto reverse
+                if debugA0 == debugA1:
+                    if debugA2 == debugA3:
+                        pass
+
+            #   Gather positive connection data if applicable
+            if len(trackLayout.trackConnections[yAxis][1]) != 0:
+                for i in range(2):
+                    agent[1] = IncramentStepLite(trackLayout, agent[1])
+
+                #   Critical debug point - need to check if data here makes sense before passing into my else-if
+                debugB0 = agent[1].trackGroup[0]
+                debugB1 = agent[1].trackGroup[2]
+                debugB2 = agent[1].trackIndex[0]
+                debugB3 = agent[1].trackIndex[2]
+
+                #   Check if the track connection step resulted in an auto reverse
+                if debugB0 == debugB1:
+                    if debugB2 == debugB3:
+                        pass
+
+
+def ConfigTrackSwitchInverse(trackLayout):
+    #   TODO: We can touch this function once the above one is working as expected
+    #           Both share the same common logic, but this one is going to do a bit
+    #           more nesting of the axis'
+    #
+    #           Welp, the above is now done! Now we need to fight the mess of using
+    #           the same logic with nested switches. This is gonna be a bloddy mess
     pass
+
+
+def InverseDirection(currentPath):
+    if currentPath.direction[-1] == "-":
+        currentPath.direction[-1] = "+"
+    else:
+        currentPath.direction[-1] = "-"
+    
+    return currentPath
 
 
 def CreateTrainPath(path, trackLayout, target, config):
@@ -501,8 +636,6 @@ def CreateTrainPath(path, trackLayout, target, config):
 
                     stopSerch = True
                     break
-
-
                 
                 if directionGroup == 0 and subGroup == 23:
                     pass
@@ -511,19 +644,11 @@ def CreateTrainPath(path, trackLayout, target, config):
 
                 #   If not end, proceed with program
                 if currentPath.pathEnd == False:
-                    groupLength = len(trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0])
-                    # Get index of current position
-                    for posIndex in range(groupLength):
-                        groupIndexPos = trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0][posIndex]
-                        if groupIndexPos == currentPath.trackIndex[-1]:
-                            groupIndexPos = posIndex
-                            break
-
                     # ------------------------ Find and record next positon ------------------------
                     # ------------------------------------------------------------------------------
                     #   If last step was not a switch and path not on a cooldown
                     if currentPath.switchSequence == False:
-                        currentPath = IncramentStep(trackLayout, currentPath, config, groupIndexPos)
+                        currentPath = IncramentStepFull(trackLayout, currentPath, config)
 
                     # ------------------ Find and record next positon from switch ------------------
                     # ------------------------------------------------------------------------------
@@ -534,7 +659,7 @@ def CreateTrainPath(path, trackLayout, target, config):
                     # ----------------- Process forward movement before reversing ------------------
                     # ------------------------------------------------------------------------------
                     elif currentPath.vectorAlligned == False:
-                        currentPath = IncramentStep(trackLayout, currentPath, config, groupIndexPos)
+                        currentPath = IncramentStepFull(trackLayout, currentPath, config)
 
                         #   Adjust switch step wait
                         if currentPath.switchStepWait == 0 and currentPath.reverseNeeded == True:
@@ -551,7 +676,7 @@ def CreateTrainPath(path, trackLayout, target, config):
                             currentPath.cooldown = currentPath.cooldown - 1
                         else:
                             # Add incramnet here so that we aren't behind the choo choo. Kinda odd, but it works
-                            currentPath = IncramentStep(trackLayout, currentPath, config, groupIndexPos)
+                            currentPath = IncramentStepFull(trackLayout, currentPath, config)
                             currentPath.vectorAlligned = True
                         
                         pass
