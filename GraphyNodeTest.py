@@ -1,7 +1,17 @@
-# Current build date: Dec 24 2024
+# Current build date: Dec 25 2024
 
+#   Used for spawning new paths
 import copy
+#   Used for string parsing and vchar removal.
+#       Required: pip install regex
+import regex as re
+#   Converts a literal string list representation back into mutable list
+import ast
+#   Convert to JSON for debugging
+import json
 
+
+DEBUG_FLAG = False
 STEPS_AFTER_SWITCH = 3
 COOLDOWN_REVERSE = (STEPS_AFTER_SWITCH * 2)
 COOLDOWN_NORMAL = 1
@@ -129,30 +139,7 @@ class LayoutMaster():
             #10
             [[[]], [[]]]
         ]
-        self.switchInverseDir = [
-            #00
-            [[[]], [[[]]]],
-            #01
-            [[[], []], [[], []]],
-            #02
-            [[[], []], [[], [], [], []]],
-            #03
-            [[[]], [[]]],
-            #04
-            [[[]], [[]]],
-            #05
-            [[[]], [[]]],
-            #06
-            [[[]], [[]]],
-            #07
-            [[[]], [[]]],
-            #08
-            [[[]], [[]]],
-            #09
-            [[[]], [[]]],
-            #10
-            [[[]], [[]]]
-        ]
+        self.switchInverseDir = []
 
         self.trackConnections = [
             #00
@@ -179,30 +166,7 @@ class LayoutMaster():
             [[8, 3], [8, 3]]
         ]
 
-        self.trackInverseDir = [
-            #00
-            [],
-            #01
-            [],
-            #02
-            [[], []],
-            #03
-            [[], []],
-            #04
-            [[], []],
-            #05
-            [],
-            #06
-            [],
-            #07
-            [],
-            #08
-            [],
-            #09
-            [[], []],
-            #10
-            [[], []]
-        ]
+        self.trackInverseDir = []
 
         self.trackEnd = [
             #00
@@ -229,12 +193,68 @@ class LayoutMaster():
             []
         ]
 
+
     def CreateTrackComp(self):
         for yAxis in range(len(self.trackGroupHuman)):
             self.trackGroupComp.append([[], yAxis])
             for xAxis in range(len(self.trackGroupHuman[yAxis][0])):
                 self.trackGroupComp[yAxis][0].append(xAxis)
+    
 
+    def DuplicateListStructure(self, sourceList):
+        purgedList = copy.deepcopy(sourceList)
+
+        purgedList = self.PurgeAllListData(purgedList)
+
+        return purgedList
+
+        
+    #   This is a really dangerous and badly written function reliant on whacky
+    #       regex statements. This absolutely needs to be changed asap, but it 
+    #       works so we are going to quietly ignore it for now in favor of
+    #       completing this project... this is going to haunt my dreams later
+    def PurgeAllListData(self, listPurge):
+        strList = str(listPurge)
+
+        #   Regex remove every alphanumeric charactes
+        try:
+            strList = re.sub(r'\w', '', strList)
+        except:
+            pass
+
+        #   Regex destroy any spaces that may exist
+        try:
+            strList = re.sub(' ', '', strList)
+        except:
+            pass
+
+        #   Regex destroy any negative, plus, or wildcard signs still alive
+        try:
+            strList = re.sub('-', '', strList)
+        except:
+            pass
+        try:
+            strList = re.sub('+', '', strList)
+        except:
+            pass
+        try:
+            strList = re.sub('*', '', strList)
+        except:
+            pass
+
+        #   Regex destroy any commas that may exist within brackets
+        try:
+            strList = re.sub(r'\[,\]', '[]', strList)
+        except:
+            pass
+
+        #   All expected data I can think of has been destroyed, all that
+        #       is left to do now is convert this string literal back into
+        #       a Python list and hope we have not made God cry
+        listPurge = ast.literal_eval(strList)
+
+        return listPurge
+    
 
 class TrainPath:
     def __init__(self, direction, group, index):
@@ -255,7 +275,30 @@ class TrainPath:
         self.inverseDirection = False
 
 
-def TrainPathMain():
+def TrackController():
+    #   Create track object and begin transforming list into a native enviornment
+    trackLayout = LayoutMaster()
+    trackLayout.CreateTrackComp()
+    trackLayout.trackInverseDir = trackLayout.DuplicateListStructure(trackLayout.trackConnections)
+    trackLayout.switchInverseDir = trackLayout.DuplicateListStructure(trackLayout.switchConnection)
+
+    if DEBUG_FLAG == True:
+        json_str = json.dumps(trackLayout.switchConnection)
+
+        with open('ZZ_DEBUG_SwitchConnection.json', 'w') as f:
+            json.dump(json_str, f)
+
+        f.close()
+
+    #   Configure vector inverse points
+    ConfigTrackConnectionInverse(trackLayout)
+    ConfigTrackSwitchInverse(trackLayout)
+
+    #   Call Pathing Agent Creator
+    TrainPathMain(trackLayout)
+
+
+def TrainPathMain(trackLayout):
     #   Config creation
     pointForwards = 1
     pointBackwards = 5
@@ -272,15 +315,6 @@ def TrainPathMain():
     #   Package config
     config = [pointForwards, pointBackwards, pointReverse, maxCycle]
     target = [start, ziel]
-
-    #   Create track object
-    trackLayout = LayoutMaster()
-    trackLayout.CreateTrackComp()
-
-    #   Configure vector inverse points
-    ConfigTrackConnectionInverse(trackLayout)
-    ConfigTrackSwitchInverse(trackLayout)
-
 
     #   Create path container and begin search
     path = [[], []]
@@ -369,20 +403,21 @@ def StepBackwards(trackLayout, currentPath):
 
 
 def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
-    #   First get the switch group container
+    #   First get the switch group container identifier
     if currentPath.direction[-1] == '+':
-        switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][1]
-        switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][1]
-        switchInverseList = trackLayout.switchInverseDir[currentPath.trackGroup[-1]][1]
+        indexSearch = 1
         initialDirection = '+'
     else:
-        switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][0]
-        switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][0]
-        switchInverseList = trackLayout.switchInverseDir[currentPath.trackGroup[-1]][0]
+        indexSearch = 0
         initialDirection = '-'
 
+    #   Call specified container from direction
+    switchConnection = trackLayout.switchConnection[currentPath.trackGroup[-1]][indexSearch]
+    switchPosition = trackLayout.switchPosition[currentPath.trackGroup[-1]][indexSearch]
+    switchInverseList = trackLayout.switchInverseDir[currentPath.trackGroup[-1]][indexSearch]
 
-    switchThrowList = "Ooga booga grug mad"
+    #   Funny debug flag; make grug happy not mad - https://grugbrain.dev/
+    switchThrowList = "Grug angry"
 
     for i in range(len(switchPosition)):
         pathPos = [currentPath.trackGroup[-1], currentPath.trackIndex[-1]]
@@ -394,7 +429,7 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
 
     #   If we hit this, This means that we tried calling the switch function when we were 
     #       not at a switch. This makes grug unhappy
-    if switchThrowList == "Ooga booga grug mad":
+    if switchThrowList == "Grug angry":
         pass
 
     #   TODO:   We need to add some flags to stop the children from being allowed to reverse
@@ -421,7 +456,7 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
 
         else:
             #   Spawn a new child path
-            SpawnPathCopy(path, directionGroup, basePath)
+            SpawnPathCopyLite(path, directionGroup, basePath)
 
             #   Step forward with the new child
             path[directionGroup][-1].trackGroup.append(switchThrowList[switchThrow][0])
@@ -441,16 +476,16 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
     return currentPath
 
 
-def SpawnPathCopy(path, directionGroup, currentPath):
+def SpawnPathCopyLite(path, directionGroup, currentPath):
     path[directionGroup].append([])
     path[directionGroup][-1] = copy.deepcopy(currentPath)
 
 
-def SpawnIndependantChild(correctVector, path, directionGroup, currentPath):
+def SpawnPathCopyFull(correctVector, path, directionGroup, currentPath):
     #   Based on vector, record state
     if correctVector == 1 or correctVector == 2:
         # Create new subGroup list; deepcopy previous subGroup to new subGroup
-        SpawnPathCopy(path, directionGroup, currentPath)
+        SpawnPathCopyLite(path, directionGroup, currentPath)
 
         # Switch and direction vectors are alligned, flag as positive
         path[directionGroup][-1].vectorAlligned = True
@@ -459,7 +494,7 @@ def SpawnIndependantChild(correctVector, path, directionGroup, currentPath):
         
     if correctVector == 3 or correctVector == 2:
         #   Create new subGroup list; deepcopy previous subGroup to new subGroup
-        SpawnPathCopy(path, directionGroup, currentPath)
+        SpawnPathCopyLite(path, directionGroup, currentPath)
 
         #   Switch and direction vectors are NOT alligned, flag as negative for reverse action processing
         path[directionGroup][-1].vectorAlligned = False
@@ -469,13 +504,21 @@ def SpawnIndependantChild(correctVector, path, directionGroup, currentPath):
         path[directionGroup][-1].reverseNeeded = True
 
 
-def SwapDirection(currentPath):
+def SwapLastDirection(currentPath):
     if currentPath.direction[-1] == '+':
         currentPath.direction[-1] = '-'
     else:
         currentPath.direction[-1] = '+'
     
     return currentPath
+
+
+def CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup):
+    if len(trackLayout.trackEnd[currentPath.trackGroup[-1]]) > 0:
+        trackEndPoints = trackLayout.trackEnd[currentPath.trackGroup[-1]]
+        for i in range(len(trackEndPoints)):
+            if trackEndPoints[i] == currentPath.trackIndex[-1]:
+                path[directionGroup][subGroup].pathEnd = True
 
 
 def CheckSwitch(currentPath, trackLayout):
@@ -511,14 +554,6 @@ def CheckSwitch(currentPath, trackLayout):
     return correctVector
 
 
-def CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup):
-    if len(trackLayout.trackEnd[currentPath.trackGroup[-1]]) > 0:
-        trackEndPoints = trackLayout.trackEnd[currentPath.trackGroup[-1]]
-        for i in range(len(trackEndPoints)):
-            if trackEndPoints[i] == currentPath.trackIndex[-1]:
-                path[directionGroup][subGroup].pathEnd = True
-
-
 def ConfigTrackConnectionInverse(trackLayout):
     #   TODO: Need to fix this critical component. The functionality is there for
     #           creating steps, but now we need to use the found data correctly.
@@ -534,8 +569,6 @@ def ConfigTrackConnectionInverse(trackLayout):
 
     for yAxis in range(len(trackLayout.trackConnections)):
         if len(trackLayout.trackConnections[yAxis]) != 0:
-            debug = trackLayout.trackConnections[yAxis]
-
             #   Create agents and initialize two starts to each end of track
             agent[0] = TrainPath('-', yAxis, trackLayout.trackGroupComp[yAxis][0][0])
             agent[1] = TrainPath('+', yAxis, trackLayout.trackGroupComp[yAxis][0][-1])
@@ -687,9 +720,9 @@ def CreateTrainPath(path, trackLayout, target, config):
                     correctVector = CheckSwitch(currentPath, trackLayout)
 
                     #   This creates a more serious new spawn compared to the other spawn
-                    SpawnIndependantChild(correctVector, path, directionGroup, currentPath)
+                    SpawnPathCopyFull(correctVector, path, directionGroup, currentPath)
 
     return successfulPath
 
 
-TrainPathMain()
+TrackController()
