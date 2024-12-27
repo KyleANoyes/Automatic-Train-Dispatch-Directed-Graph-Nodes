@@ -11,7 +11,8 @@ import ast
 import json
 
 
-DEBUG_FLAG = False
+DEBUG_FULL = False
+DEBUG_LITE = True
 STEPS_AFTER_SWITCH = 3
 COOLDOWN_REVERSE = (STEPS_AFTER_SWITCH * 2)
 COOLDOWN_NORMAL = 1
@@ -89,7 +90,7 @@ class LayoutMaster():
             # TODO  Document this better, also further nest the list structure
             #
             #       This is the template to use:
-            #       [Switch[Direction[ConnectionGroup[TrackConnection]]] = [[[[]]], [[[]]]]
+            #       [Switch=Single[Direction=2x[ConnectionGroup=1x[TrackConnection=INFx]]] = [[[[]]], [[[]]]]
             #
         self.switchConnection = [
             #00
@@ -109,7 +110,7 @@ class LayoutMaster():
             #07
             [[[[1, 4]]], [[[1, 4]]]],
             #08
-            [[[[2, 3]]], [[[9, 0]]]],
+            [[[[2, 3]]], [[[9, 0], [9, 2]]]],
             #09
             [[[]], [[]]],
             #10
@@ -282,7 +283,7 @@ def TrackController():
     trackLayout.trackInverseDir = trackLayout.DuplicateListStructure(trackLayout.trackConnections)
     trackLayout.switchInverseDir = trackLayout.DuplicateListStructure(trackLayout.switchConnection)
 
-    if DEBUG_FLAG == True:
+    if DEBUG_FULL == True:
         json_str = json.dumps(trackLayout.switchConnection)
 
         with open('ZZ_DEBUG_SwitchConnection.json', 'w') as f:
@@ -377,8 +378,10 @@ def StepForwards(trackLayout, currentPath):
             currentPath.trackIndex.append(trackGroup[0])
         else:
             connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][1]
+            baseGroup = trackLayout.trackGroupComp[connection[0]][0]
             currentPath.trackGroup.append(connection[0])
-            currentPath.trackIndex.append(connection[1])
+            currentPath.trackIndex.append(baseGroup[connection[1]])
+            pass
 
     return currentPath
 
@@ -396,8 +399,10 @@ def StepBackwards(trackLayout, currentPath):
             currentPath.trackIndex.append(trackGroup[-1])
         else:
             connection = trackLayout.trackConnections[currentPath.trackGroup[-1]][0]
+            baseGroup = trackLayout.trackGroupComp[connection[0]][0]
             currentPath.trackGroup.append(connection[0])
-            currentPath.trackIndex.append(connection[1])
+            currentPath.trackIndex.append(baseGroup[connection[1]])
+            pass
 
     return currentPath
 
@@ -432,17 +437,10 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
     if switchThrowList == "Grug angry":
         pass
 
-    #   TODO:   We need to add some flags to stop the children from being allowed to reverse
-    #               immediately after completing a switch motion
-    #
-    #           This is due to an improper counting system where we use '+' and '-'.
-    #               The logic is fine, but we need to inverse the direction when using
-    #               a switch that is in a differnt list polarity               
+    # Log a common base point for all future child spawns
+    basePath = copy.deepcopy(currentPath)
 
-    #   Now that we have the container, begin the pathing
     for switchThrow in range(len(switchThrowList)):
-        basePath = copy.deepcopy(currentPath)
-        
         if switchThrow == 0:
             #   Step forward
             currentPath.trackGroup.append(switchThrowList[switchThrow][0])
@@ -472,8 +470,6 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
         #   This function is not ready yet
         #if switchInverseList[switchThrow][0] == True:
             #currentPath = InverseDirection(path[directionGroup][-1])
-
-    return currentPath
 
 
 def SpawnPathCopyLite(path, directionGroup, currentPath):
@@ -521,13 +517,10 @@ def CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup):
                 path[directionGroup][subGroup].pathEnd = True
 
 
-def CheckSwitch(currentPath, trackLayout):
-    # ------------------------ Check if next point is a swtich ------------------------
-    # ---------------------------------------------------------------------------------
-    
+def CheckSwitch(currentPath, trackLayout):    
     if currentPath.pathEnd == False:
         # Check if next point is a switch
-        correctVector = 0
+        foundVector = 0
 
         # If switch and not on cooldown
         if currentPath.switchStepWait == 0 and currentPath.switchSequence == False and currentPath.cooldown == 0:
@@ -544,75 +537,95 @@ def CheckSwitch(currentPath, trackLayout):
                     if currentPath.switchSequence == False:
                         #   Process the vector data
                         if currentPath.direction[-1] == switchVector:
-                            correctVector = 1
+                            foundVector = 1
                         elif switchVector == '*':
-                            correctVector = 2
+                            foundVector = 2
                         else:
-                            correctVector = 3
+                            foundVector = 3
                         break
     
-    return correctVector
+    return foundVector
+
+
+def CheckInitPositionOverlap(agent):
+    inverseFlag = False
+
+    #   Check if any of our incramented steps repeat the original step
+    for i in range(len(agent)):
+        agentPosG0 = agent[0].trackGroup[0]
+        agentPosI0 = agent[0].trackIndex[0]
+        agentPosG1 = agent[i].trackGroup[2]
+        agentPosI1 = agent[i].trackIndex[2]
+
+        #   Check if we have a matching position, if we do, then we read
+        #       over ourselves and know an inverse is required
+        if agentPosG0 == agentPosG1:
+            if agentPosI0 == agentPosI1:
+                inverseFlag = True
+                break
+    
+    return inverseFlag
 
 
 def ConfigTrackConnectionInverse(trackLayout):
-    #   TODO: Need to fix this critical component. The functionality is there for
-    #           creating steps, but now we need to use the found data correctly.
-    #           This is really really good though, we are on the cusp of an
-    #           having an insanely robust and modular tool for all JMRI 
-    #           panels!!!
-
-
-
-    #   Extract the needed data from the object for simplicity
-    #   Agent container
-    agent = [[], []]
-
     for yAxis in range(len(trackLayout.trackConnections)):
+        if DEBUG_LITE == True:
+            print(F"ConfigTrackConnectionInverse yAxis = {yAxis}")
+
+        #   Agent container / reset point
+        agent = [[], []]
+
         if len(trackLayout.trackConnections[yAxis]) != 0:
             #   Create agents and initialize two starts to each end of track
-            agent[0] = TrainPath('-', yAxis, trackLayout.trackGroupComp[yAxis][0][0])
-            agent[1] = TrainPath('+', yAxis, trackLayout.trackGroupComp[yAxis][0][-1])
+            agent[0].append(TrainPath('-', yAxis, trackLayout.trackGroupComp[yAxis][0][0]))
+            agent[1].append(TrainPath('+', yAxis, trackLayout.trackGroupComp[yAxis][0][-1]))
 
             #   Gather negative connection data if applicable
             if len(trackLayout.trackConnections[yAxis][0]) != 0:
-                for i in range(2):
-                    agent[0] = IncramentStepLite(trackLayout, agent[0])
+                agent[0][0] = IncramentStepLite(trackLayout, agent[0][0])
 
-                #   Critical debug point - need to check if data here makes sense before passing into my else-if
-                debugA0 = agent[0].trackGroup[0]
-                debugA1 = agent[0].trackGroup[2]
-                debugA2 = agent[0].trackIndex[0]
-                debugA3 = agent[0].trackIndex[2]
+                #   Check if the step was at a switch
+                switchCheck = CheckSwitch(agent[0][0], trackLayout)
 
-                #   Check if the track connection step resulted in an auto reverse
-                if debugA0 == debugA1:
-                    if debugA2 == debugA3:
-                        pass
+                if switchCheck == 0 or switchCheck == 3:
+                    #   Normal step incrament
+                    agent[0][0] = IncramentStepLite(trackLayout, agent[0][0])
+                    
+                else:
+                    #   Call the step incrament function, only one cycle is needed
+                    IncramentStepSwitch(agent, agent[0][0], trackLayout, 0)
+                    
+                inverseFlag = CheckInitPositionOverlap(agent[0])
+                
+                trackLayout.trackInverseDir[yAxis][0] = inverseFlag
 
             #   Gather positive connection data if applicable
             if len(trackLayout.trackConnections[yAxis][1]) != 0:
-                for i in range(2):
-                    agent[1] = IncramentStepLite(trackLayout, agent[1])
+                inverseFlag = False
 
-                #   Critical debug point - need to check if data here makes sense before passing into my else-if
-                debugB0 = agent[1].trackGroup[0]
-                debugB1 = agent[1].trackGroup[2]
-                debugB2 = agent[1].trackIndex[0]
-                debugB3 = agent[1].trackIndex[2]
+                agent[1][0] = IncramentStepLite(trackLayout, agent[1][0])
 
-                #   Check if the track connection step resulted in an auto reverse
-                if debugB0 == debugB1:
-                    if debugB2 == debugB3:
-                        pass
+                #   Check if the step was at a switch
+                switchCheck = CheckSwitch(agent[1][0], trackLayout)
+
+                #   Incrament appropriate step
+                if switchCheck == 0 or switchCheck == 3:
+                    #   Normal step incrament
+                    agent[1][0] = IncramentStepLite(trackLayout, agent[1][0])
+                else:
+                    #   Call the step incrament function, only one cycle is needed
+                    IncramentStepSwitch(agent, agent[1][0], trackLayout, 1)
+
+                inverseFlag = CheckInitPositionOverlap(agent[1])
+
+                trackLayout.trackInverseDir[yAxis][1] = inverseFlag
+
 
 
 def ConfigTrackSwitchInverse(trackLayout):
-    #   TODO: We can touch this function once the above one is working as expected
-    #           Both share the same common logic, but this one is going to do a bit
-    #           more nesting of the axis'
-    #
-    #           Welp, the above is now done! Now we need to fight the mess of using
-    #           the same logic with nested switches. This is gonna be a bloddy mess
+        #   Agent container / reset point
+        agent = [[], []]
+
     pass
 
 
@@ -687,7 +700,7 @@ def CreateTrainPath(path, trackLayout, target, config):
                     # ------------------------------------------------------------------------------
                     
                     elif currentPath.vectorAlligned == True:
-                        currentPath = IncramentStepSwitch(path, currentPath, trackLayout, directionGroup)
+                        IncramentStepSwitch(path, currentPath, trackLayout, directionGroup)
 
                     # ----------------- Process forward movement before reversing ------------------
                     # ------------------------------------------------------------------------------
