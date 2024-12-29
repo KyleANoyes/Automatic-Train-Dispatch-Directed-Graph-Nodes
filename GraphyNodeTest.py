@@ -160,7 +160,7 @@ class LayoutMaster():
             #07
             [],
             #08
-            [],
+            [[2, 3], []],
             #09
             [[8, 3], [8, 3]],
             #10
@@ -293,7 +293,7 @@ def TrackController():
 
     #   Configure vector inverse points
     ConfigTrackConnectionInverse(trackLayout)
-    ConfigTrackSwitchInverse(trackLayout)
+    ConfigSwitchConnectionInverse(trackLayout)
 
     #   Call Pathing Agent Creator
     TrainPathMain(trackLayout)
@@ -309,9 +309,9 @@ def TrainPathMain(trackLayout):
     #   Set location and target
     start = [9, 1]
     #   Real target
-    #ziel = [7, 0]
+    ziel = [0, 0]
     #   Fake target to force inifinite search
-    ziel = [1, 99]
+    #ziel = [1, 99]
 
     #   Package config
     config = [pointForwards, pointBackwards, pointReverse, maxCycle]
@@ -324,13 +324,13 @@ def TrainPathMain(trackLayout):
     pass
 
 
-def IncramentStepLite(trackLayout, currentPath):
+def IncramentStepLite(trackLayout, currentPath, initMode=False):
     # Check if direction indicates positive
     if currentPath.direction[-1] == '+':
-        currentPath = StepForwards(trackLayout, currentPath)
+        currentPath = StepForwards(trackLayout, currentPath, initMode)
 
     else:
-        currentPath = StepBackwards(trackLayout, currentPath)
+        currentPath = StepBackwards(trackLayout, currentPath, initMode)
 
     #   Incrament direction
     currentPath.direction.append(currentPath.direction[-1])
@@ -338,20 +338,20 @@ def IncramentStepLite(trackLayout, currentPath):
     return currentPath
 
 
-def IncramentStepFull(trackLayout, currentPath, config):
+def IncramentStepFull(trackLayout, currentPath, config, initMode=False):
     pointForwards = config[0]
     pointBackwards = config[1]
     pointReverse = config[2]
 
     # Check if direction indicates positive
     if currentPath.direction[-1] == '+':
-        currentPath = StepForwards(trackLayout, currentPath)
+        currentPath = StepForwards(trackLayout, currentPath, initMode)
 
         # Add points and steps
         currentPath.sumPoints += pointForwards
         currentPath.sumSteps += 1
     else:
-        currentPath = StepBackwards(trackLayout, currentPath)
+        currentPath = StepBackwards(trackLayout, currentPath, initMode)
 
         #   Add points
         currentPath.sumPoints += pointBackwards
@@ -360,10 +360,14 @@ def IncramentStepFull(trackLayout, currentPath, config):
     #   Incrament direction
     currentPath.direction.append(currentPath.direction[-1])
 
+    if currentPath.inverseDirection == True:
+        InverseDirection(currentPath)
+        currentPath.inverseDirection = False
+
     return currentPath
 
 
-def StepForwards(trackLayout, currentPath):
+def StepForwards(trackLayout, currentPath, initMode):
     trackGroup = trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0]
     groupLength = len(trackGroup) - 1
     # Check if end of list
@@ -381,12 +385,14 @@ def StepForwards(trackLayout, currentPath):
             baseGroup = trackLayout.trackGroupComp[connection[0]][0]
             currentPath.trackGroup.append(connection[0])
             currentPath.trackIndex.append(baseGroup[connection[1]])
-            pass
+
+            if initMode == False:
+                CheckInverseNeed(currentPath, trackLayout)
 
     return currentPath
 
 
-def StepBackwards(trackLayout, currentPath):
+def StepBackwards(trackLayout, currentPath, initMode):
     trackGroup = trackLayout.trackGroupComp[currentPath.trackGroup[-1]][0]
     #   Check if start of list
     if currentPath.trackIndex[-1] != 0:
@@ -402,12 +408,29 @@ def StepBackwards(trackLayout, currentPath):
             baseGroup = trackLayout.trackGroupComp[connection[0]][0]
             currentPath.trackGroup.append(connection[0])
             currentPath.trackIndex.append(baseGroup[connection[1]])
-            pass
+
+            if initMode == False:
+                CheckInverseNeed(currentPath, trackLayout)
 
     return currentPath
 
 
-def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
+def CheckInverseNeed(currentPath, trackLayout):
+    priorStepGroup = currentPath.trackGroup[-2]
+    vectorNum = GetVectorNum(currentPath)
+
+    if trackLayout.trackInverseDir[priorStepGroup][vectorNum] == True:
+        currentPath.inverseDirection = True
+
+
+def GetVectorNum(currentPath):
+    if currentPath.direction[-1] == "-":
+        return 0
+    else:
+        return 1
+
+
+def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup, initMode=False):
     #   First get the switch group container identifier
     if currentPath.direction[-1] == '+':
         indexSearch = 1
@@ -436,7 +459,8 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
     #   If we hit this, This means that we tried calling the switch function when we were 
     #       not at a switch. This makes grug unhappy
     if grugHappy == False:
-        print("grug fighting Shaman or grug find Complexity. grug unhappy >:(")
+        print("grug find Shaman or grug find Complexity. This make grug unhappy >:(")
+        print("Grug now yell at big brain programmer use smol brain")
         pass
 
     # Log a common base point for all future child spawns
@@ -453,6 +477,13 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
 
             #   Add direction
             currentPath.direction.append(initialDirection)
+            
+            #   Check if inverse is needed
+            if initMode == False:
+                CheckInverseNeed(currentPath, trackLayout)
+                
+                if currentPath.inverseDirection == True:
+                    InverseDirection(currentPath)
 
         else:
             #   Spawn a new child path
@@ -468,10 +499,12 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup):
             #   Add direction
             path[directionGroup][-1].direction.append(initialDirection)
         
-        #   Inverse direction if needed
-        #   This function is not ready yet
-        #if switchInverseList[switchThrow][0] == True:
-            #currentPath = InverseDirection(path[directionGroup][-1])
+            #   Check if inverse is needed
+            if initMode == False:
+                CheckInverseNeed(path[directionGroup][-1], trackLayout)
+                
+                if path[directionGroup][-1].inverseDirection == True:
+                    InverseDirection(path[directionGroup][-1])
 
 
 def SpawnPathCopyLite(path, directionGroup, currentPath):
@@ -602,18 +635,18 @@ def ConfigTrackConnectionInverse(trackLayout):
 
             #   Gather negative connection data if applicable
             if len(trackLayout.trackConnections[yAxis][0]) != 0:
-                agent[0][0] = IncramentStepLite(trackLayout, agent[0][0])
+                agent[0][0] = IncramentStepLite(trackLayout, agent[0][0], True)
 
                 #   Check if the step was at a switch
                 switchCheck = CheckSwitch(agent[0][0], trackLayout)
 
                 if switchCheck == 0 or switchCheck == 3:
                     #   Normal step incrament
-                    agent[0][0] = IncramentStepLite(trackLayout, agent[0][0])
+                    agent[0][0] = IncramentStepLite(trackLayout, agent[0][0], True)
                     
                 else:
                     #   Call the step incrament function, only one cycle is needed
-                    IncramentStepSwitch(agent, agent[0][0], trackLayout, 0)
+                    IncramentStepSwitch(agent, agent[0][0], trackLayout, 0, True)
                     
                 inverseFlag = CheckInitPositionOverlapFull(agent[0])
                 
@@ -623,7 +656,7 @@ def ConfigTrackConnectionInverse(trackLayout):
             if len(trackLayout.trackConnections[yAxis][1]) != 0:
                 inverseFlag = False
 
-                agent[1][0] = IncramentStepLite(trackLayout, agent[1][0])
+                agent[1][0] = IncramentStepLite(trackLayout, agent[1][0], True)
 
                 #   Check if the step was at a switch
                 switchCheck = CheckSwitch(agent[1][0], trackLayout)
@@ -631,18 +664,20 @@ def ConfigTrackConnectionInverse(trackLayout):
                 #   Incrament appropriate step
                 if switchCheck == 0 or switchCheck == 3:
                     #   Normal step incrament
-                    agent[1][0] = IncramentStepLite(trackLayout, agent[1][0])
+                    agent[1][0] = IncramentStepLite(trackLayout, agent[1][0], True)
                 else:
                     #   Call the step incrament function, only one cycle is needed
-                    IncramentStepSwitch(agent, agent[1][0], trackLayout, 1)
+                    IncramentStepSwitch(agent, agent[1][0], trackLayout, 1, True)
 
                 inverseFlag = CheckInitPositionOverlapFull(agent[1])
 
                 trackLayout.trackInverseDir[yAxis][1] = inverseFlag
+        else:
+            trackLayout.trackInverseDir[yAxis].append(False)
+            trackLayout.trackInverseDir[yAxis].append(False)
 
 
-
-def ConfigTrackSwitchInverse(trackLayout):
+def ConfigSwitchConnectionInverse(trackLayout):
     for yAxis in range(len(trackLayout.switchPosition)):
         #   Split list into positive and negative base
         switchListNeg = trackLayout.switchPosition[yAxis][0]
@@ -705,7 +740,7 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
 
         if grugHappy == True:
             #   Step through the switch
-            IncramentStepSwitch(agent, agent[dirIndex][0], trackLayout, dirIndex)
+            IncramentStepSwitch(agent, agent[dirIndex][0], trackLayout, dirIndex, True)
 
             #   Check if the step was at a switch
             for switchCopy in range(len(agent[dirIndex])):
@@ -714,7 +749,7 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
                 if switchCheck == 0 or switchCheck == 3:
                     #   Normal step incrament
                     try:
-                        IncramentStepLite(trackLayout, agent[dirIndex][switchCopy])
+                        IncramentStepLite(trackLayout, agent[dirIndex][switchCopy], True)
 
                     #   If the incrament fails, assume we have a bound limit. This should
                     #       be replaced at some point with a more thorough end-of-line check
@@ -725,7 +760,7 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
                     
                 else:
                     #   Call the step incrament function, only one cycle is needed
-                    IncramentStepSwitch(agent, agent[dirIndex][switchCopy], trackLayout, dirIndex)
+                    IncramentStepSwitch(agent, agent[dirIndex][switchCopy], trackLayout, dirIndex, True)
                 
                 #   Get the invrse flag result, but check each 
                 inverseFlag = CheckInitPositionOverlapLite(agent[dirIndex][switchCopy])
@@ -815,7 +850,7 @@ def CreateTrainPath(path, trackLayout, target, config):
                         #   Adjust switch step wait
                         if currentPath.switchStepWait == 0 and currentPath.reverseNeeded == True:
                             #   Flip direction then flag reverse needed as false
-                            currentPath = SwapDirection(currentPath)
+                            currentPath = InverseDirection(currentPath)
 
                             currentPath.reverseNeeded = False
 
