@@ -1,10 +1,13 @@
-#   Import supporting scripts
+#   Import universal scripts
+import Globals
+import MessageContainer
+
+#   Import full supporting scripts
 import GeneralAction
 import DataCollect
 import GeneralAction
-import Globals
 
-#   Import specific parts of modules
+#   Import partial supporting scripts
 
 #   Import Python modules
 import copy
@@ -140,9 +143,7 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup, initMode
     #   If we hit this, This means that we tried calling the switch function when we were 
     #       not at a switch. This makes grug unhappy
     if grugHappy == False:
-        print("grug find Shaman or grug find Complexity. This make grug unhappy >:(")
-        print("Grug now yell at big brain programmer use smol brain")
-        pass
+        MessageContainer.ErrorMsg(0)
 
     # Log a common base point for all future child spawns
     basePath = copy.deepcopy(currentPath)

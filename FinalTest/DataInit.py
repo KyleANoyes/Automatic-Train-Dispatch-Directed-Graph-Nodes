@@ -1,9 +1,12 @@
-#   Import full supporting scripts
+#   Import universal scripts
 import Globals
+import MessageContainer
+
+#   Import full supporting scripts
 import StepHandler
 import DataCheck
 
-#   Import specific parts of modules
+#   Import partial supporting scripts
 from ClassContainer import TrainPath
 
 #   Import Python modules
@@ -52,7 +55,7 @@ def CheckInitPositionOverlapLite(agent):
 def ConfigTrackConnectionInverse(trackLayout):
     for yAxis in range(len(trackLayout.trackConnections)):
         if Globals.DEBUG_LITE == True:
-            print(F"ConfigTrackConnectionInverse yAxis = {yAxis}")
+            MessageContainer.DebugMsg(0, yAxis)
 
         #   Agent container / reset point
         agent = [[], []]
@@ -130,7 +133,7 @@ def ConfigSwitchConnectionInverse(trackLayout):
 
 def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
     if Globals.DEBUG_LITE == True:
-        print(F"ConfigTrackSwitchInverse yAxis = {yAxis}, xAxis = {xAxis}, dirVector = {dirIndex}")
+        MessageContainer.DebugMsg(1, {yAxis}, {xAxis}, {dirIndex})
 
     if dirIndex == 0:
         vector = "-"

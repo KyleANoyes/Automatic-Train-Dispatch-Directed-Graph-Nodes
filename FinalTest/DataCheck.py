@@ -1,6 +1,10 @@
-#   Import supporting scripts
+#   Import universal scripts
+import Globals
+import MessageContainer
 
-#   Import specific parts of modules
+#   Import full supporting scripts
+
+#   Import partial supporting scripts
 
 #   Import Python modules
 

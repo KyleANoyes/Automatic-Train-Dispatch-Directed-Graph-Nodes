@@ -1,10 +1,13 @@
-#   Import full supporting scripts
+#   Import universal scripts
 import Globals
+import MessageContainer
+
+#   Import full supporting scripts
 import StepHandler
 import GeneralAction
 import DataCheck
 
-#   Import specific parts of modules
+#   Import partial supporting scripts
 from ClassContainer import TrainPath
 
 #   Import Python modules
@@ -13,29 +16,22 @@ import copy
 # --------------------------------------- #
 
 
-def TrainPathMain(trackLayout):
+def TrainPathMain(trackLayout, start, end):
     #   Config creation
     pointForwards = 1
     pointBackwards = 5
     pointReverse = 10
     maxCycle = 150
 
-    #   Set location and target
-    start = [9, 1]
-    #   Real target
-    ziel = [0, 0]
-    #   Fake target to force inifinite search
-    #ziel = [1, 99]
-
     #   Package config
     config = [pointForwards, pointBackwards, pointReverse, maxCycle]
-    target = [start, ziel]
+    target = [start, end]
 
     #   Create path container and begin search
     path = [[], []]
     successfulPath = CreateTrainPath(path, trackLayout, target, config)
 
-    pass
+    return successfulPath
 
 
 def CreateTrainPath(path, trackLayout, target, config):
@@ -73,7 +69,7 @@ def CreateTrainPath(path, trackLayout, target, config):
 
             for subGroup in range(len(path[directionGroup])):
                 currentPath = path[directionGroup][subGroup]
-                print(F"{directionGroup}, {subGroup} -- trackGroup = {currentPath.trackGroup[-1]}, trackIndex = {currentPath.trackIndex[-1]}")
+                MessageContainer.DebugMsg(2, directionGroup, subGroup, currentPath.trackGroup[-1], currentPath.trackIndex[-1])
 
                 #   Check if the goal was reached
                 if currentPath.trackGroup[-1] == ziel[0] and currentPath.trackIndex[-1] == ziel[1]:
@@ -127,7 +123,7 @@ def CreateTrainPath(path, trackLayout, target, config):
                         
                         pass
                     else:
-                        print("ERROR: Impossible state reached")
+                        MessageContainer.ErrorMsg(1)
 
                     #   Check if current position is on a switch
                     correctVector = DataCheck.CheckSwitch(currentPath, trackLayout)

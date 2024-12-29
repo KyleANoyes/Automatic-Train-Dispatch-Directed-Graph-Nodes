@@ -1,9 +1,17 @@
-#   Required PIP installs
-#       pip install regex
+#   Import universal scripts
+import Globals
+import MessageContainer
 
-import regex as re
+#   Import full supporting scripts
+
+#   Import partial supporting scripts
+
+#   Import Python modules
+import regex as re  #   pip install regex
 import ast
 import copy
+
+# --------------------------------------- #
 
 
 class LayoutMaster():
