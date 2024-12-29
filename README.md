@@ -1,11 +1,7 @@
 # Automatic-Train-Routing-Directed-Graph-Nodes
 Copy of my testing environment used when creating the direct graph node algorithm
 
-This program is run off a coordinate based track layout and will successfully route choo choo's from one portion of a track to another, and negotiate any obstacles it encounters.
+This program is desgined to represent a model railraod using a directed graph node system to allow for automatic pathing of trains, modularize signals, and ensure greater flexability on any size layout
 
-The code here is a test of automatic train dispatch capabilities to operate my layout in a completely autonomous manner
-
-Show is now complete and work is resuming on this 😁
-
-Context: This script is designed as a proof of concept to augment our signal system in JMRI used at CGMRC (https://cgmrc.com/) with a more robust and modular pathing system
+Context: This program is a proof of concept to augment the signal system in JMRI used at CGMRC (https://cgmrc.com/) with a more robust and modular pathing system
 This will also be used for my own layout at home
