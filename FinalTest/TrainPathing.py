@@ -6,6 +6,7 @@ import MessageContainer
 import StepHandler
 import GeneralAction
 import DataCheck
+import DataInit
 
 #   Import partial supporting scripts
 from ClassContainer import TrainPath
@@ -74,56 +75,29 @@ def CreateTrainPath(path, trackLayout, target, config):
                 #   Check if the goal was reached
                 if currentPath.trackGroup[-1] == ziel[0] and currentPath.trackIndex[-1] == ziel[1]:
                     #   Record successfuly path
+                    currentPath.targetReached == True
+                    currentPath.endSearch == True
                     successfulPath.append(copy.deepcopy(currentPath))
 
                     stopSerch = True
                     break
                 
-                if directionGroup == 0 and subGroup == 23:
-                    pass
                 #   Check if we are at an end point
                 DataCheck.CheckTrackEndLite(trackLayout, path, currentPath, directionGroup, subGroup)
 
+                #   If we are starting a search at the end, lets try to force a step
+                if currentPath.pathEnd == True and len(currentPath.trackGroup) == 1 and currentPath.endSearch == False:
+                    #   Check if our path can incrament at all
+                    DataInit.CheckStartingStep(trackLayout, path)
+                    
+                    #   If an incramnet was able to be made, flag the pathEnd as False.
+                    #       This will allow a step to proceed even at the end of a track
+                    if currentPath.pathEnd == True and len(currentPath.trackGroup) == 1 and currentPath.endSearch == False:
+                        currentPath.pathEnd = False
+
                 #   If not end, proceed with program
                 if currentPath.pathEnd == False:
-                    # ------------------------ Find and record next positon ------------------------
-                    # ------------------------------------------------------------------------------
-                    #   If last step was not a switch and path not on a cooldown
-                    if currentPath.switchSequence == False:
-                        currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
-
-                    # ------------------ Find and record next positon from switch ------------------
-                    # ------------------------------------------------------------------------------
-                    
-                    elif currentPath.vectorAlligned == True:
-                        StepHandler.IncramentStepSwitch(path, currentPath, trackLayout, directionGroup)
-
-                    # ----------------- Process forward movement before reversing ------------------
-                    # ------------------------------------------------------------------------------
-                    elif currentPath.vectorAlligned == False:
-                        currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
-
-                        #   Adjust switch step wait
-                        if currentPath.switchStepWait == 0 and currentPath.reverseNeeded == True:
-                            #   Flip direction then flag reverse needed as false
-                            currentPath = GeneralAction.InverseDirection(currentPath)
-
-                            currentPath.reverseNeeded = False
-
-                        elif currentPath.switchStepWait > 0:
-                            currentPath.switchStepWait = currentPath.switchStepWait - 1
-                        
-                        #   Adjust cooldown, but if it's zero, allow new switch catch
-                        if currentPath.cooldown > 0:
-                            currentPath.cooldown = currentPath.cooldown - 1
-                        else:
-                            # Add incramnet here so that we aren't behind the choo choo. Kinda odd, but it works
-                            currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
-                            currentPath.vectorAlligned = True
-                        
-                        pass
-                    else:
-                        MessageContainer.ErrorMsg(1)
+                    StepSearchForwards(trackLayout, path, currentPath, config, directionGroup)
 
                     #   Check if current position is on a switch
                     correctVector = DataCheck.CheckSwitch(currentPath, trackLayout)
@@ -132,3 +106,42 @@ def CreateTrainPath(path, trackLayout, target, config):
                     StepHandler.SpawnPathCopyFull(correctVector, path, directionGroup, currentPath)
 
     return successfulPath
+
+
+def StepSearchForwards(trackLayout, path, currentPath, config, directionGroup):
+    # ------------------------ Find and record next positon ------------------------
+    # ------------------------------------------------------------------------------
+    #   If last step was not a switch and path not on a cooldown
+    if currentPath.switchSequence == False:
+        currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
+
+    # ------------------ Find and record next positon from switch ------------------
+    # ------------------------------------------------------------------------------
+    
+    elif currentPath.vectorAlligned == True:
+        StepHandler.IncramentStepSwitch(path, currentPath, trackLayout, directionGroup)
+
+    # ----------------- Process forward movement before reversing ------------------
+    # ------------------------------------------------------------------------------
+    elif currentPath.vectorAlligned == False:
+        currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
+
+        #   Adjust switch step wait
+        if currentPath.switchStepWait == 0 and currentPath.reverseNeeded == True:
+            #   Flip direction then flag reverse needed as false
+            currentPath = GeneralAction.InverseDirection(currentPath)
+
+            currentPath.reverseNeeded = False
+
+        elif currentPath.switchStepWait > 0:
+            currentPath.switchStepWait = currentPath.switchStepWait - 1
+        
+        #   Adjust cooldown, but if it's zero, allow new switch catch
+        if currentPath.cooldown > 0:
+            currentPath.cooldown = currentPath.cooldown - 1
+        else:
+            # Add incramnet here so that we aren't behind the choo choo. Kinda odd, but it works
+            currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
+            currentPath.vectorAlligned = True
+    else:
+        MessageContainer.ErrorMsg(1)

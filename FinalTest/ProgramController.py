@@ -6,6 +6,7 @@ import MessageContainer
 import ClassContainer
 import DataInit
 import TrainPathing
+import SignalPathing
 import UserInput
 import DataValidate
 
@@ -17,7 +18,8 @@ import json
 # --------------------------------------- #
 
 
-DEMO_MODE = True
+DEMO_MODE = False
+RAPID_TEST = True
 
 
 def TrackController():
@@ -40,37 +42,79 @@ def TrackController():
     DataInit.ConfigSwitchConnectionInverse(trackLayout)
 
     if DEMO_MODE == True:
-        coolDemo(trackLayout)
+        CoolDemo(trackLayout)
     
     else:
         #   Call Pathing Agent Creator and define goals
-        start = [0, 2]
-        end = [9, 1]
+        start = [0, 3]
+        end = [1, 0]
         path = TrainPathing.TrainPathMain(trackLayout, start, end)
+        if len(path) > 0:
+            MessageContainer.UserMsg(5, path[0].trackGroup, path[0].trackIndex)
+        else:
+            MessageContainer.ErrorMsg(4)
 
     pass
 
 
-def coolDemo(trackLayout):
-    MessageContainer.ProgramInfo(0)
+def CoolDemo(trackLayout):
+    if RAPID_TEST == False:
+        MessageContainer.ProgramInfo(0)
 
-    MessageContainer.UserMsg(0)
+        MessageContainer.UserMsg(0)
 
-    while(True):
-        while True:
-            MessageContainer.UserMsg(1)
-            userChoice = UserInput.GetUserInt(0)
-            if DataValidate.ValidRangeInt(userChoice, -1, 1, True) == True:
+        while(True):
+            while True:
+                MessageContainer.UserMsg(1)
+                userChoice = UserInput.GetUserInt(0)
+                if DataValidate.ValidRangeInt(userChoice, -1, 1, True) == True:
+                    break
+                else:
+                    MessageContainer.ErrorMsg(3, "Inclusive", -1, 1)
+                
+            if userChoice == -1:
                 break
+            elif userChoice == 1:
+                SignalPathing.SignalPathMain(trackLayout)
             else:
-                MessageContainer.ErrorMsg(3, "Inclusive", -1, 1)
-            
-        if userChoice == -1:
-            break
-        elif userChoice == 1:
-            MessageContainer.UserMsg(3)
-        else:
-            MessageContainer.UserMsg(4)
+                MessageContainer.UserMsg(4)
+                while True:
+                    startGroup = UserInput.GetUserInt(1)
+                    if DataValidate.ValidRangeInt(startGroup, 0, 999, True) == True:
+                        break
+                    else:
+                        MessageContainer.ErrorMsg(3, "Inclusive", 0, "inf or 999")
+                while True:
+                    startIndex = UserInput.GetUserInt(2)
+                    if DataValidate.ValidRangeInt(startIndex, 0, 999, True) == True:
+                        break
+                    else:
+                        MessageContainer.ErrorMsg(3, "Inclusive", 0, "inf or 999")
+                while True:
+                    targetGroup = UserInput.GetUserInt(3)
+                    if DataValidate.ValidRangeInt(targetGroup, 0, 999, True) == True:
+                        break
+                    else:
+                        MessageContainer.ErrorMsg(3, "Inclusive", 0, "inf or 999")
+                while True:
+                    targetIndex = UserInput.GetUserInt(4)
+                    if DataValidate.ValidRangeInt(targetGroup, 0, 999, True) == True:
+                        break
+                    else:
+                        MessageContainer.ErrorMsg(3, "Inclusive", 0, "inf or 999")
+                
+                start = [startGroup, startIndex]
+                end = [targetGroup, targetIndex]
+
+                MessageContainer.DebugMsg(3, startGroup, startIndex, targetGroup, targetIndex)
+
+                path = TrainPathing.TrainPathMain(trackLayout, start, end)
+
+                MessageContainer.UserMsg(5, path[0].trackGroup, path[0].trackIndex)
+        
+        MessageContainer.UserMsg(2)
+    else:
+        while True:
             while True:
                 startGroup = UserInput.GetUserInt(1)
                 if DataValidate.ValidRangeInt(startGroup, 0, 999, True) == True:
@@ -104,8 +148,6 @@ def coolDemo(trackLayout):
             path = TrainPathing.TrainPathMain(trackLayout, start, end)
 
             MessageContainer.UserMsg(5, path[0].trackGroup, path[0].trackIndex)
-    
-    MessageContainer.UserMsg(2)
 
 
 

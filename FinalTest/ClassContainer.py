@@ -22,7 +22,7 @@ class LayoutMaster():
             "BranchMain",
             "InnerWest",
             "InnerEast",
-            "Yard",
+            "YardAccess",
             "Turntable",
             "UpperAux",
             "BranchLower",
@@ -33,54 +33,70 @@ class LayoutMaster():
         # The actual int values do not matter,
         #   they are just here for better visualization
         self.trackGroupHuman = [
-            # MainPax - 00
+            #   MainPax - 00
             [[0, 1, 2, 3, 4, 5, 6, 7], 0],
-            # MainFreight - 01
+            #   MainFreight - 01
             [[8, 9, 10, 11, 12, 13, 14, 15], 1],
-            # Branchmain - 02
+            #   Branchmain - 02
             [[16, 20, 21, 22, 23, 24, 26], 2],
-            # InnerWest - 03
+            #   InnerWest - 03
             [[27, 28], 3],
-            # InnerEast - 04
+            #   InnerEast - 04
             [[29, 30, 31], 4],
-            # Yard - 05
-            [[32, 37, 33, 34, 35, 36, 25], 5],
-            # Turntable - 06
+            #   Yard - 05
+            [[32, 37, 25], 5],
+            #   Turntable - 06
             [[38, 39, 40, 41, 42], 6],
-            # UpperAux - 07
+            #   UpperAux - 07
             [[17, 18, 19], 7],
-            # BranchLower - 08
+            #   BranchLower - 08
             [[43, 44, 45, 46], 8],
-            # RevLoop - 09
+            #   RevLoop - 09
             [[48, 49, 50], 9],
-            # LowerAux - 10
-            [[47], 10]
+            #   LowerAux - 10
+            [[47], 10],
+            #   Yard Pacific Track0 - 11
+            [[33], 11],
+            #   Yard Pacific Track0 - 12
+            [[34], 12],
+            #   Yard Pacific Track0 - 13
+            [[35], 13],
+            #   Yard Pacific Track0 - 14
+            [[36], 14]
         ]
 
         self.trackGroupComp = []
 
         self.switchSequences = [
-            #00
+            #   00
             [[5, '-'], [7, '+']],
-            #01
+            #   01
             [[0, '*'], [4, '*']],
-            #02
+            #   02
             [[1, '-'], [3, '+'], [4, '+'], [5, '+'], [6, '*']],
-            #03
+            #   03
             [],
-            #04
+            #   04
             [[0, '+']],
-            #05
+            #   05
             [[0, '+'], [5, '+']],
-            #06
+            #   06
             [],
-            #07
+            #   07
             [[1, '*']],
-            #08
+            #   08
             [[3, '+']],
-            #09
+            #   09
             [],
-            #10
+            #   10
+            [],
+            #   11
+            [],
+            #   12
+            [],
+            #   13
+            [],
+            #   14
             []
         ]
             # TODO  Document this better, also further nest the list structure
@@ -89,105 +105,137 @@ class LayoutMaster():
             #       [Switch=Single[Direction=2x[ConnectionGroup=1x[TrackConnection=INFx]]] = [[[[]]], [[[]]]]
             #
         self.switchConnection = [
-            #00
+            #   00
             [[[[1, 4]]], [[[1, 0]]]],
-            #01
+            #   01
             [[[[0, 7]], [[7, 1]]], [[[2, 0]], [[7, 1], [0, 5]]]],
-            #02
-            [[[[1, 0]], [[4, 0]]], [[[8, 0]], [[5, 0]], [[5, 6]], [[3, 1]]]],
-            #03
+            #   02
+            [[[[1, 0]], [[4, 0]]], [[[8, 0]], [[5, 0]], [[5, 2]], [[3, 1]]]],
+            #   03
             [[[]], [[]]],
-            #04
+            #   04
             [[[]], [[[4, 2]]]],
-            #05
-            [[[[5, 6]]], [[[5, 1], [5, 2], [5, 3], [5, 4]]]],
-            #06
+            #   05
+            [[[[5, 6]]], [[[11, 0], [12, 0], [13, 0], [14, 0]]]],
+            #   06
             [[[]], [[]]],
-            #07
+            #   07
             [[[[1, 4]]], [[[1, 4]]]],
-            #08
+            #   08
             [[[]], [[[9, 0], [9, 2]]]],
-            #09
+            #   09
             [[[]], [[]]],
-            #10
-            [[[]], [[]]]
+            #   10
+            [[[]], [[]]],
+            #   11
+            [[[]], [[]]],
+            #   12
+            [[[]], [[]]],
+            #   13
+            [[[]], [[]]],
+            #   14
+            [[[]], [[]]],
         ]
         self.switchPosition = [
-            #00
+            #   00
             [[[0, 5]], [[0, 7]]],
-            #01
+            #   01
             [[[1, 0], [1, 4]], [[1, 0], [1, 4]]],
-            #02
+            #   02
             [[[2, 1], [2, 6]], [[2, 3], [2, 4], [2, 5], [2, 6]]],
-            #03
+            #   03
             [[[]], [[]]],
-            #04
+            #   04
             [[[]], [[4, 0]]],
-            #05
-            [[[5, 5]], [[5, 0]]],
-            #06
+            #   05
+            [[[5, 1]], [[5, 0]]],
+            #   06
             [[[]], [[]]],
-            #07
+            #   07
             [[[7, 1]], [[7, 1]]],
-            #08
+            #   08
             [[], [[8, 3]]],
-            #09
+            #   09
             [[[]], [[]]],
-            #10
+            #   10
+            [[[]], [[]]],
+            #   11
+            [[[]], [[]]],
+            #   12
+            [[[]], [[]]],
+            #   13
+            [[[]], [[]]],
+            #   14
             [[[]], [[]]]
         ]
         self.switchInverseDir = []
 
         self.trackConnections = [
-            #00
+            #   00
             [],
-            #01
+            #   01
             [],
-            #02
+            #   02
             [[], [3, 0]],
-            #03
+            #   03
             [[2, -1], [2, -1]],
-            #04
+            #   04
             [[2, -1], []],
-            #05
+            #   05
+            [[2, 4], [2, 5]],
+            #   06
             [],
-            #06
+            #   07
             [],
-            #07
-            [],
-            #08
-            [[2, 3], []],
-            #09
+            #   08
+            [[2, 3], [10, 0]],
+            #   09
             [[8, 3], [8, 3]],
-            #10
-            [[8, 3], [8, 3]]
+            #   10
+            [[8, 3], [8, 3]],
+            #   11
+            [[5, 0], []],
+            #   12
+            [[5, 0], []],
+            #   13
+            [[5, 0], []],
+            #   14
+            [[5, 0], []],
         ]
 
         self.trackInverseDir = []
 
         self.trackEnd = [
-            #00
+            #   00
             [],
-            #01
+            #   01
             [],
-            #02
+            #   02
             [0],
-            #03
+            #   03
             [0, 1],
-            #04
+            #   04
             [1, 2],
-            #05
-            [1, 2, 3, 4, 5],
-            #06
+            #   05
+            [5],
+            #   06
             [0, 1, 2, 3, 4],
-            #07
+            #   07
             [0, 2],
-            #08
+            #   08
             [],
-            #09
+            #   09
             [],
-            #10
-            []
+            #   10
+            [],
+            #   11
+            [0],
+            #   12
+            [0],
+            #   13
+            [0],            
+            #   14
+            [0]
         ]
 
 
@@ -259,7 +307,8 @@ class TrainPath:
         self.trackIndex = [index]
         self.direction = [direction]
         self.pathEnd = False
-        self.endReached = False
+        self.targetReached = False
+        self.endSearch = False
         self.switchSequence = False
         self.vectorAlligned = False
         self.reverseNeeded = False
@@ -269,4 +318,21 @@ class TrainPath:
         self.sumPoints = 0
         self.sumSteps = 0
         self.selfLoop = 0
+        self.inverseDirection = False
+
+
+class SignalContainer:
+    def __init__(self, name, location, direction):
+        self.signalName = name
+        self.signalLocation = location
+        self.direction = direction
+
+
+class SignalPath:
+    def __init__(self, direction, group, index):
+        self.trackGroup = [group]
+        self.trackIndex = [index]
+        self.direction = [direction]
+        self.light = 0
+        self.endReached = False
         self.inverseDirection = False

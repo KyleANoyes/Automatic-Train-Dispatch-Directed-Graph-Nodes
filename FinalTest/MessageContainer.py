@@ -47,6 +47,8 @@ def ErrorMsg(code, context0="", context1="", context2="", context3=""):
             print("Invalid input: Only numbers are allowed\n")
         case 3:
             print(F"Input is out of range. {context0} range: {context1} to {context2}\n")
+        case 4:
+            print(F"A path was not discovered\n")
         case _:
             print(F"ERROR: MessageContainer.ErrorMsg called with invalid code: {code}\n")
 
@@ -87,7 +89,7 @@ def ProgramInfo(code):
             print("Developer:       Kyle Noyes")
             print("Contact:         https://github.com/KyleANoyes or https://www.linkedin.com/in/kyle-noyes-63a8691b2/")
             print("Version:         0.1")
-            print("Build Date:      Dec 29, 2024")
+            print("Build Date:      Dec 31, 2024")
             print("Known issues:    - Problem persists when interacting with '*' switches, I need to review this")
             print("                 - Point system incorrectly setup to handle flipped vector flags")
             print("                 - Infinite loop of child agents being spawned in TrackGroup2")

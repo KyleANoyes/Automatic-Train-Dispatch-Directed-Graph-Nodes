@@ -10,6 +10,7 @@ import DataCheck
 from ClassContainer import TrainPath
 
 #   Import Python modules
+import copy
 
 # --------------------------------------- #
 
@@ -199,3 +200,23 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
 
                 #   Record the inverse flag at the same depth that the SwitchDepth will use
                 trackLayout.switchInverseDir[yAxis][dirIndex][xAxis][switchCopy].append(inverseFlag)
+
+
+def CheckStartingStep(trackLayout, path):
+    #   Positive check
+    try:
+        tempPath = copy.deepcopy(path[0][0])
+        StepHandler.IncramentStepLite(trackLayout, tempPath)
+    except:
+        #   If we fail to move forward, then assume we are at a true end
+        path[0][0].endSearch = True
+        path[0][0].pathEnd = True
+
+    #   Negative check
+    try:
+        tempPath = copy.deepcopy(path[1][0])
+        StepHandler.IncramentStepLite(trackLayout, tempPath)
+    except:
+        #   If we fail to move forward, then assume we are at a true end
+        path[1][0].endSearch = True
+        path[1][0].pathEnd = True
