@@ -3,7 +3,6 @@ import Globals
 import MessageContainer
 
 #   Import full supporting scripts
-import DataValidate
 
 #   Import partial supporting scripts
 

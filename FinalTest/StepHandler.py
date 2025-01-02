@@ -6,6 +6,7 @@ import MessageContainer
 import GeneralAction
 import DataCollect
 import GeneralAction
+import DataInit
 
 #   Import partial supporting scripts
 
@@ -78,7 +79,7 @@ def StepForwards(trackLayout, currentPath, initMode):
             currentPath.trackIndex.append(baseGroup[connection[1]])
 
             if initMode == False:
-                CheckInverseNeed(currentPath, trackLayout)
+                CheckInverseNeedTrack(currentPath, trackLayout)
 
     return currentPath
 
@@ -101,16 +102,21 @@ def StepBackwards(trackLayout, currentPath, initMode):
             currentPath.trackIndex.append(baseGroup[connection[1]])
 
             if initMode == False:
-                CheckInverseNeed(currentPath, trackLayout)
+                CheckInverseNeedTrack(currentPath, trackLayout)
 
     return currentPath
 
 
-def CheckInverseNeed(currentPath, trackLayout):
+def CheckInverseNeedTrack(currentPath, trackLayout):
     priorStepGroup = currentPath.trackGroup[-2]
     vectorNum = DataCollect.GetVectorNum(currentPath)
 
     if trackLayout.trackInverseDir[priorStepGroup][vectorNum] == True:
+        currentPath.inverseDirection = True
+
+
+def CheckInverseNeedSwitch(currentPath, switchInverseList, switchThrow):
+    if switchInverseList[switchThrow][0] == True:
         currentPath.inverseDirection = True
 
 
@@ -131,12 +137,12 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup, initMode
     #   Funny debug flag; make grug happy not mad - https://grugbrain.dev/
     grugHappy = False
 
-    for i in range(len(switchPosition)):
+    for subGroup in range(len(switchPosition)):
         pathPos = [currentPath.trackGroup[-1], currentPath.trackIndex[-1]]
         
-        if switchPosition[i] == pathPos:
-            switchThrowList = switchConnection[i]
-            switchInverseList = switchInverseList[i]
+        if switchPosition[subGroup] == pathPos:
+            switchThrowList = switchConnection[subGroup]
+            switchInverseList = switchInverseList[subGroup]
             grugHappy = True
             break
 
@@ -162,7 +168,7 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup, initMode
             
             #   Check if inverse is needed
             if initMode == False:
-                CheckInverseNeed(currentPath, trackLayout)
+                CheckInverseNeedSwitch(currentPath, switchInverseList, switchThrow)
                 
                 if currentPath.inverseDirection == True:
                     GeneralAction.InverseDirection(currentPath)
@@ -183,15 +189,18 @@ def IncramentStepSwitch(path, currentPath, trackLayout, directionGroup, initMode
         
             #   Check if inverse is needed
             if initMode == False:
-                CheckInverseNeed(path[directionGroup][-1], trackLayout)
+                CheckInverseNeedSwitch(path[directionGroup][-1], switchInverseList, switchThrow)
                 
                 if path[directionGroup][-1].inverseDirection == True:
                     GeneralAction.InverseDirection(path[directionGroup][-1])
+    
+    pass
 
 
 def SpawnPathCopyLite(path, directionGroup, currentPath):
     path[directionGroup].append([])
     path[directionGroup][-1] = copy.deepcopy(currentPath)
+    DataInit.GenerateNewID(path[directionGroup][-1])
 
 
 def SpawnPathCopyFull(correctVector, path, directionGroup, currentPath):

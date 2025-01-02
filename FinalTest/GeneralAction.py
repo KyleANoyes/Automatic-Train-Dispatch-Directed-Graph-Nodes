@@ -18,3 +18,16 @@ def InverseDirection(currentPath):
         currentPath.direction[-1] = "-"
     
     return currentPath
+
+
+def InverseBool(flag):
+    if flag == True:
+        flag = False
+    else:
+        flag == True
+
+    return flag
+
+
+def TerminateSearch(path):
+    path.endSearch = True

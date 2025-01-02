@@ -16,3 +16,10 @@ def GetVectorNum(currentPath):
         return 0
     else:
         return 1
+    
+
+def ListLenAboveMin(testList, min):
+    if len(testList) >= min:
+        return True
+    else:
+        return False

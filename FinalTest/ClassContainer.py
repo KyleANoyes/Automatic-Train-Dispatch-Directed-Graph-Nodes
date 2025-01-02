@@ -108,7 +108,7 @@ class LayoutMaster():
             #   00
             [[[[1, 4]]], [[[1, 0]]]],
             #   01
-            [[[[0, 7]], [[7, 1]]], [[[2, 0]], [[7, 1], [0, 5]]]],
+            [[[[0, 7]], [[7, 1]]], [[[2, 1]], [[7, 1], [0, 5]]]],
             #   02
             [[[[1, 0]], [[4, 0]]], [[[8, 0]], [[5, 0]], [[5, 2]], [[3, 1]]]],
             #   03
@@ -227,7 +227,7 @@ class LayoutMaster():
             #   09
             [],
             #   10
-            [],
+            [0],
             #   11
             [0],
             #   12
@@ -319,6 +319,7 @@ class TrainPath:
         self.sumSteps = 0
         self.selfLoop = 0
         self.inverseDirection = False
+        self.uniqueID = 0
 
 
 class SignalContainer:

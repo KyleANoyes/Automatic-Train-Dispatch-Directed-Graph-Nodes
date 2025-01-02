@@ -50,6 +50,10 @@ def CreateTrainPath(path, trackLayout, target, config):
     path[0].append(TrainPath('+', start[0], start[1]))
     path[1].append(TrainPath('-', start[0], start[1]))
 
+    #   Assigne unique ID to paths
+    DataInit.GenerateNewID(path[0][0])
+    DataInit.GenerateNewID(path[1][0])
+
     #   Container for successful paths
     successfulPath = []
 
@@ -97,7 +101,7 @@ def CreateTrainPath(path, trackLayout, target, config):
 
                 #   If not end, proceed with program
                 if currentPath.pathEnd == False:
-                    StepSearchForwards(trackLayout, path, currentPath, config, directionGroup)
+                    StepSearchForwards(trackLayout, path, currentPath, config, directionGroup, subGroup)
 
                     #   Check if current position is on a switch
                     correctVector = DataCheck.CheckSwitch(currentPath, trackLayout)
@@ -108,18 +112,26 @@ def CreateTrainPath(path, trackLayout, target, config):
     return successfulPath
 
 
-def StepSearchForwards(trackLayout, path, currentPath, config, directionGroup):
+def StepSearchForwards(trackLayout, path, currentPath, config, directionGroup, subGroup):
     # ------------------------ Find and record next positon ------------------------
     # ------------------------------------------------------------------------------
     #   If last step was not a switch and path not on a cooldown
     if currentPath.switchSequence == False:
-        currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
+        try:
+            currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
+        except:
+            MessageContainer.ErrorMsg(4, directionGroup, subGroup, currentPath.uniqueID)
 
     # ------------------ Find and record next positon from switch ------------------
     # ------------------------------------------------------------------------------
     
     elif currentPath.vectorAlligned == True:
-        StepHandler.IncramentStepSwitch(path, currentPath, trackLayout, directionGroup)
+        try:
+            StepHandler.IncramentStepSwitch(path, currentPath, trackLayout, directionGroup)
+        except:
+            #   TODO: Figure out what is causing this exception. It's rare, but there is
+            #           logic fault somewhere related to vector alligned == False reverse
+            MessageContainer.ErrorMsg(5, directionGroup, subGroup, currentPath.uniqueID)
 
     # ----------------- Process forward movement before reversing ------------------
     # ------------------------------------------------------------------------------
@@ -129,9 +141,11 @@ def StepSearchForwards(trackLayout, path, currentPath, config, directionGroup):
         #   Adjust switch step wait
         if currentPath.switchStepWait == 0 and currentPath.reverseNeeded == True:
             #   Flip direction then flag reverse needed as false
-            currentPath = GeneralAction.InverseDirection(currentPath)
-
-            currentPath.reverseNeeded = False
+            try:
+                currentPath = GeneralAction.InverseDirection(currentPath)
+                currentPath.reverseNeeded = False
+            except:
+                MessageContainer.ErrorMsg(6, directionGroup, subGroup, currentPath.uniqueID)
 
         elif currentPath.switchStepWait > 0:
             currentPath.switchStepWait = currentPath.switchStepWait - 1
@@ -141,7 +155,10 @@ def StepSearchForwards(trackLayout, path, currentPath, config, directionGroup):
             currentPath.cooldown = currentPath.cooldown - 1
         else:
             # Add incramnet here so that we aren't behind the choo choo. Kinda odd, but it works
-            currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
-            currentPath.vectorAlligned = True
+            try:
+                currentPath = StepHandler.IncramentStepFull(trackLayout, currentPath, config)
+                currentPath.vectorAlligned = True
+            except:
+                MessageContainer.ErrorMsg(4, directionGroup, subGroup, currentPath.uniqueID)
     else:
         MessageContainer.ErrorMsg(1)

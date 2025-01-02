@@ -5,6 +5,7 @@ import MessageContainer
 #   Import full supporting scripts
 import StepHandler
 import DataCheck
+import uuid
 
 #   Import partial supporting scripts
 from ClassContainer import TrainPath
@@ -116,25 +117,30 @@ def ConfigSwitchConnectionInverse(trackLayout):
         switchListNeg = trackLayout.switchPosition[yAxis][0]
         switchListPos = trackLayout.switchPosition[yAxis][1]
 
+        validationAgent = [[], []]
+
         #   Test negative switches first
         for xAxis in range(len(switchListNeg)):
             dirIndex = 0
 
-            ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex)
+            validationAgent[0].append(ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex))
 
         #   Test positive switches next
         for xAxis in range(len(switchListPos)):
             dirIndex = 1
 
-            ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex)
+            validationAgent[1].append(ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex))
 
-    
-    pass
+        if Globals.DEBUG_LITE == True:
+            MessageContainer.DebugMsg(4, yAxis, trackLayout.switchConnection[yAxis], trackLayout.switchInverseDir[yAxis])
+
+        #   TODO: Need to get this self revolving checker working, but it's not critical yet
+        #DataValidate.CheckSelfRevolvingInverse(validationAgent)
 
 
 def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
     if Globals.DEBUG_LITE == True:
-        MessageContainer.DebugMsg(1, {yAxis}, {xAxis}, {dirIndex})
+        MessageContainer.DebugMsg(1, yAxis, xAxis, dirIndex)
 
     if dirIndex == 0:
         vector = "-"
@@ -142,6 +148,9 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
         vector = "+"
 
     inverseFlag = False
+
+    #   Container for tests done below
+    agent = [[], []]
 
     try:
         trackLayout.switchPosition[yAxis][dirIndex][xAxis][0]
@@ -151,11 +160,6 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
         runState = 1
 
     if runState == 0:
-        #   Agent container. Even though this doesn't actually need both of the lists, other
-        #       functions called do require it so we are just going to mimick it rather
-        #       then do a major overhaul that honestly won't result in anything better
-        agent = [[], []]
-
         #   Since the rest of this program uses nested track paths, we are going to do the same.
         #       Functionally this makes no difference
         agent[dirIndex].append(TrainPath(vector, trackLayout.switchPosition[yAxis][dirIndex][xAxis][0], trackLayout.switchPosition[yAxis][dirIndex][xAxis][1]))
@@ -200,6 +204,8 @@ def ConfigTrackSwitchTester(trackLayout, yAxis, xAxis, dirIndex):
 
                 #   Record the inverse flag at the same depth that the SwitchDepth will use
                 trackLayout.switchInverseDir[yAxis][dirIndex][xAxis][switchCopy].append(inverseFlag)
+        
+        return agent[dirIndex]
 
 
 def CheckStartingStep(trackLayout, path):
@@ -220,3 +226,12 @@ def CheckStartingStep(trackLayout, path):
         #   If we fail to move forward, then assume we are at a true end
         path[1][0].endSearch = True
         path[1][0].pathEnd = True
+
+
+def GenerateNewID(pathChild):
+    while True:
+        testID = str(uuid.uuid4())
+        if testID not in Globals.UUID_ASSIGNED:
+            Globals.UUID_ASSIGNED.append(testID)
+            pathChild.uniqueID = testID
+            break

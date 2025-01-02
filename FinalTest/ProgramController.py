@@ -41,13 +41,16 @@ def TrackController():
     DataInit.ConfigTrackConnectionInverse(trackLayout)
     DataInit.ConfigSwitchConnectionInverse(trackLayout)
 
+    #   Assign digit print when calling certain messages
+    Globals.DIGIT_PRINT_FORCE = len(str(len(trackLayout.trackGroupComp)))
+
     if DEMO_MODE == True:
         CoolDemo(trackLayout)
     
     else:
         #   Call Pathing Agent Creator and define goals
-        start = [0, 3]
-        end = [1, 0]
+        start = [10, 0]
+        end = [4, 0]
         path = TrainPathing.TrainPathMain(trackLayout, start, end)
         if len(path) > 0:
             MessageContainer.UserMsg(5, path[0].trackGroup, path[0].trackIndex)
